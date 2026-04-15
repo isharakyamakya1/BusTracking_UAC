@@ -1,0 +1,217 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAC Transport - Accueil</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="index-page">
+
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-uac sticky-top shadow-sm">
+        <div class="container-fluid px-4 px-lg-5">
+            <a class="navbar-brand fw-bold fs-5 d-flex align-items-center gap-2" href="/">
+                <img src="{{ url_for('static', filename='img/uaclogo.png') }}" alt="UAC Logo" class="navbar-logo">
+                <span>UAC Transport</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-lg-center">
+                    <li class="nav-item"><a class="nav-link active" href="/">Accueil</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#news">Actualites</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#community">Communaute</a></li>
+                    <li class="nav-item ms-lg-3"><a class="nav-link nav-pill" href="/login">Connexion</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section position-relative overflow-hidden">
+        <div class="hero-orb orb-left"></div>
+        <div class="hero-orb orb-right"></div>
+        <div class="hero-wave"></div>
+        <div class="container position-relative z-3">
+            <div class="row align-items-center gy-5 py-5">
+                <div class="col-lg-6">
+                    <div class="hero-kicker">Transport universitaire intelligent</div>
+                    <h1 class="display-3 fw-bold text-white mb-4">Le reseau bus UAC, pilote en temps reel.</h1>
+                    <p class="lead text-white-50 mb-4">Suivez les bus, consultez les annonces du campus et gardez toute la communaute de l'Universite de l'Assomption au Congo connectee sur une seule plateforme.</p>
+                    <div class="hero-actions d-flex flex-wrap gap-3">
+                        <a href="#news" class="btn btn-light btn-lg hero-btn-primary">Voir les actualites</a>
+                        <a href="/login" class="btn btn-outline-light btn-lg hero-btn-secondary">Acceder a la plateforme</a>
+                    </div>
+                    <div class="hero-stats row g-3 mt-4">
+                        <div class="col-sm-4">
+                            <div class="hero-stat-card">
+                                <strong>Campus</strong>
+                                <span>Infos certifiees</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="hero-stat-card">
+                                <strong>Bus</strong>
+                                <span>Suivi instantane</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="hero-stat-card">
+                                <strong>Etudiants</strong>
+                                <span>Acces simplifie</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="hero-showcase">
+                        <div class="hero-showcase-card hero-showcase-main">
+                            <div class="hero-showcase-top">
+                                <span class="status-dot"></span>
+                                Feed campus live
+                            </div>
+                            <img src="{{ url_for('static', filename='img/LOGO UAC .jpg') }}" alt="Campus UAC" class="hero-showcase-image">
+                            <div class="hero-showcase-body">
+                                <h3>Actualites, likes et commentaires dans une interface claire.</h3>
+                                <p>Un espace central pour l'information officielle, la vie du campus et le suivi du transport.</p>
+                            </div>
+                        </div>
+                       
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="community" class="community-strip">
+        <div class="container">
+            <div class="community-grid">
+                <div class="community-card">
+                    <i class="fas fa-bullhorn"></i>
+                    <div>
+                        <strong>Annonces officielles</strong>
+                        <span>Communication rapide de l'administration</span>
+                    </div>
+                </div>
+                <div class="community-card">
+                    <i class="fas fa-heart"></i>
+                    <div>
+                        <strong>Engagement social</strong>
+                        <span>Likes et retours de la communaute</span>
+                    </div>
+                </div>
+                <div class="community-card">
+                    <i class="fas fa-comments"></i>
+                    <div>
+                        <strong>Commentaires</strong>
+                        <span>Discussions visibles autour des actualites</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <main class="news-feed-section" id="news">
+        <div class="container">
+            <div class="feed-header">
+                <div>
+                    <span class="feed-kicker">Annonce</span>
+                    <h2 class="section-title mb-2">Nouvelles recentes</h2>
+                    <p class="feed-subtitle">Les annonces institutionnelles sont presentees dans un format plus officiel, plus direct et plus lisible.</p>
+                </div>
+                <a href="/login" class="btn btn-outline-primary feed-cta">Acceder au portail</a>
+            </div>
+
+            {% if news %}
+            <div class="news-feed-grid">
+                {% for item in news %}
+                <article class="index-news-card">
+                    <a href="/news/{{ item.id }}" class="news-card-link text-reset text-decoration-none">
+                        <div class="index-news-media position-relative overflow-hidden">
+                            {% if item.image_path %}
+                            <img src="{{ url_for('static', filename='uploads/news/' ~ item.image_path) }}" alt="{{ item.titre }}" class="index-news-image w-100">
+                            {% else %}
+                            <div class="index-news-image placeholder d-flex align-items-center justify-content-center text-white">
+                                <i class="fas fa-newspaper fa-2x"></i>
+                            </div>
+                            {% endif %}
+                            <div class="index-news-date">
+                                <span class="index-news-day">{{ item.date[8:10] }}</span>
+                                <span class="index-news-month">{% set month = item.date[5:7] %}
+                                    {% if month == '01' %}Jan{% elif month == '02' %}Fév{% elif month == '03' %}Mars{% elif month == '04' %}Avr{% elif month == '05' %}Mai{% elif month == '06' %}Juin{% elif month == '07' %}Juil{% elif month == '08' %}Août{% elif month == '09' %}Sept{% elif month == '10' %}Oct{% elif month == '11' %}Nov{% else %}Déc{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="index-news-body p-4">
+                            <div class="announcement-source mb-3">
+                                <span>{{ item.admin_name or 'Administration UAC' }}</span>
+                                <span>{{ item.date[11:16] if item.date|length > 16 else '' }}</span>
+                            </div>
+                            <h3>{{ item.titre }}</h3>
+                            <p>{{ item.contenu[:120] }}{% if item.contenu|length > 120 %}...{% endif %}</p>
+                            <div class="announcement-links mt-3">
+                                <a href="/news/{{ item.id }}" class="announcement-read-link">Lire plus</a>
+                                <span>{{ item.comment_count or 0 }} commentaires</span>
+                                <span>{{ item.like_count or 0 }} j'aime</span>
+                            </div>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-feed-state">
+                <i class="fas fa-newspaper"></i>
+                <h3>Aucune actualite publiee</h3>
+                <p>Le campus n'a encore partage aucune information. Revenez plus tard.</p>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <footer class="index-footer">
+        <div class="container index-footer-grid">
+            <div class="index-footer-brand">
+                <div class="index-footer-brand-top">
+                    <img src="{{ url_for('static', filename='img/uaclogo.png') }}" alt="UAC Logo" class="footer-logo">
+                    <div>
+                        <h3>UAC Transport</h3>
+                        <p class="mb-0">Universite de l'Assomption au Congo</p>
+                    </div>
+                </div>
+                <p class="index-footer-text mb-0">Plateforme de suivi en temps reel des bus universitaires, de diffusion des annonces officielles et d'amelioration de la mobilite estudiantine a Butembo.</p>
+            </div>
+
+            <div class="index-footer-column">
+                <h4>Navigation</h4>
+                <div class="footer-links">
+                    <a href="/">Accueil</a>
+                    <a href="#news">Actualites</a>
+                    <a href="/login">Connexion</a>
+                </div>
+            </div>
+
+            <div class="index-footer-column">
+                <h4>Projet</h4>
+                <div class="footer-links footer-links--stack">
+                    <span>Suivi GPS des bus</span>
+                    <span>Application web etudiante et admin</span>
+                    <span>Optimisation du transport universitaire</span>
+                </div>
+            </div>
+
+            <div class="footer-copy">
+                <span>&copy; 2026 UAC Transport</span>
+                <small>Prototype academique de TFC</small>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

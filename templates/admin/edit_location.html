@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifier Lieu - Admin{% endblock %}
+
+{% block content %}
+<section class="content">
+    <div class="card">
+        <h2>Modifier le lieu</h2>
+        <p class="muted">Changez les informations du site ou de la station.</p>
+    </div>
+
+    <div class="card">
+        <form method="POST" data-validate>
+            <label for="nom">Nom du lieu</label>
+            <input id="nom" type="text" name="nom" value="{{ location.nom }}" required>
+
+            <label for="type">Type</label>
+            <select id="type" name="type" required>
+                <option value="station" {{ 'selected' if location.type == 'station' else '' }}>Station</option>
+                <option value="site" {{ 'selected' if location.type == 'site' else '' }}>Site</option>
+            </select>
+
+            <label for="latitude">Latitude</label>
+            <input id="latitude" type="number" name="latitude" step="0.0001" value="{{ location.latitude }}" required>
+
+            <label for="longitude">Longitude</label>
+            <input id="longitude" type="number" name="longitude" step="0.0001" value="{{ location.longitude }}" required>
+
+            <div class="form-actions">
+                <button class="btn btn--primary" type="submit">Enregistrer</button>
+                <a href="/admin/locations" class="btn btn--secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

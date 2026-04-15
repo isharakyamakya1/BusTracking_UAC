@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Gestion des Lieux - Admin{% endblock %}
+{% block content %}
+<div class="admin-page">
+    <div class="page-header mb-4">
+        <h1>Gestion des Lieux</h1>
+        <p class="text-muted">Définissez les stations et sites avec leurs coordonnées GPS.</p>
+    </div>
+
+    <div class="admin-form-section">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2>Ajouter un lieu</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" class="row gy-3" data-validate>
+                    <div class="col-md-6">
+                        <label class="form-label">Nom du lieu</label>
+                        <input type="text" name="nom" class="form-control" placeholder="Takenga" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Type</label>
+                        <select name="type" class="form-select" required>
+                            <option value="">Sélectionnez</option>
+                            <option value="station">Station (départ)</option>
+                            <option value="site">Site (destination)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Latitude</label>
+                        <input type="number" name="latitude" class="form-control" step="0.0001" placeholder="-4.3265" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Longitude</label>
+                        <input type="number" name="longitude" class="form-control" step="0.0001" placeholder="15.3136" required>
+                    </div>
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-primary">Ajouter le lieu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-list-section mt-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2 class="mb-0">Lieux enregistrés</h2>
+            </div>
+            <div class="card-body p-0">
+                {% if locations %}
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Type</th>
+                                <th>Latitude</th>
+                                <th>Longitude</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for loc in locations %}
+                            <tr>
+                                <td><strong>{{ loc.nom }}</strong></td>
+                                <td>
+                                    {% if loc.type == 'station' %}
+                                    <span class="badge bg-primary">Station</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Site</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ loc.latitude }}</td>
+                                <td>{{ loc.longitude }}</td>
+                                <td>
+                                    <a href="/admin/edit_location/{{ loc.id }}" class="btn btn-sm btn-outline-primary">Modifier</a>
+                                    <a href="/admin/delete_location/{{ loc.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Confirmez la suppression?')">Supprimer</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <p>Aucun lieu enregistré.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="/admin" class="btn btn-secondary">Retour au tableau de bord</a>
+    </div>
+</div>
+{% endblock %}

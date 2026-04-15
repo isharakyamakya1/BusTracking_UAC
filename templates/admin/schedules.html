@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-page">
+    <div class="page-header mb-4">
+        <h1>Gestion des Horaires</h1>
+        <p class="text-muted">Ajoutez des trajets et suivez leur disponibilité.</p>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="POST" class="row gy-3">
+                <div class="col-md-4">
+                    <label class="form-label">Bus</label>
+                    <select name="bus_id" class="form-select" required>
+                        <option value="">Sélectionnez un bus</option>
+                        {% for b in buses %}
+                        <option value="{{ b.id }}">{{ b.plaque }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Chauffeur</label>
+                    <select name="driver_id" class="form-select" required>
+                        <option value="">Sélectionnez un chauffeur</option>
+                        {% for d in drivers %}
+                        <option value="{{ d.id }}">{{ d.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Destination</label>
+                    <input type="text" name="destination" class="form-control" placeholder="Destination" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Heure départ</label>
+                    <input type="time" name="heure_depart" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Disponibilité</label>
+                    <select name="disponible" class="form-select">
+                        <option value="oui">Disponible</option>
+                        <option value="non">Non disponible</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Ajouter Horaire</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="mb-0">Horaires enregistrés</h2>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Bus</th>
+                            <th>Chauffeur</th>
+                            <th>Destination</th>
+                            <th>Date</th>
+                            <th>Heure</th>
+                            <th>Disponibilité</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for schedule in schedules %}
+                        <tr>
+                            <td>{{ schedule.plaque or '—' }}</td>
+                            <td>{{ schedule.driver_name or '—' }}</td>
+                            <td>{{ schedule.destination }}</td>
+                            <td>{{ schedule.date }}</td>
+                            <td>{{ schedule.heure_depart }}</td>
+                            <td>{{ schedule.disponible }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">Aucun horaire enregistré.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

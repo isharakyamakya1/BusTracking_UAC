@@ -1,0 +1,98 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Gestion des Bus - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <div class="page-header mb-4">
+        <h1>Gestion des Bus</h1>
+        <p class="text-muted">Gérer le parc de véhicules : ajouter, modifier ou supprimer des bus.</p>
+    </div>
+
+    <div class="admin-form-section">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2>Ajouter un bus</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/admin/add_bus" class="row gy-3" data-validate>
+                    <div class="col-md-4">
+                        <label class="form-label">Plaque d'immatriculation</label>
+                        <input type="text" name="plaque" class="form-control" placeholder="UAC-001" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Capacité (places)</label>
+                        <input type="number" name="capacite" class="form-control" placeholder="50" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Statut</label>
+                        <select name="statut" class="form-select" required>
+                            <option value="actif">Actif</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="indisponible">Indisponible</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-primary">Ajouter le bus</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-list-section mt-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2 class="mb-0">Liste des bus</h2>
+            </div>
+            <div class="card-body p-0">
+                {% if buses %}
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Plaque</th>
+                                <th>Capacité</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bus in buses %}
+                            <tr>
+                                <td>{{ bus[0] }}</td>
+                                <td><strong>{{ bus[1] }}</strong></td>
+                                <td>{{ bus[2] }} places</td>
+                                <td>
+                                    {% if bus[3] == 'actif' %}
+                                    <span class="badge bg-success">Actif</span>
+                                    {% elif bus[3] == 'maintenance' %}
+                                    <span class="badge bg-warning">Maintenance</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Indisponible</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="/admin/edit_bus/{{ bus[0] }}" class="btn btn-sm btn-outline-primary">Modifier</a>
+                                    <a href="/admin/delete_bus/{{ bus[0] }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Confirmez la suppression?')">Supprimer</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <p>Aucun bus disponible. Ajoutez-en un pour commencer.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="/admin" class="btn btn-secondary">Retour au tableau de bord</a>
+    </div>
+</div>
+{% endblock %}

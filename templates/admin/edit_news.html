@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifier une actualité - Admin{% endblock %}
+
+{% block content %}
+<section class="content">
+    <div class="card">
+        <h2>Modifier l'actualité</h2>
+        <p class="muted">Changez le titre, le contenu ou la photo.</p>
+    </div>
+
+    <div class="card">
+        <form method="POST" enctype="multipart/form-data" data-validate>
+            <label for="titre">Titre</label>
+            <input id="titre" type="text" name="titre" value="{{ news.titre }}" required>
+
+            <label for="contenu">Contenu</label>
+            <textarea id="contenu" name="contenu" rows="5" required>{{ news.contenu }}</textarea>
+
+            <label for="image">Photo de la news</label>
+            <input id="image" type="file" name="image" accept="image/*">
+            {% if news.image_path %}
+            <div class="current-image">
+                <small>Image actuelle :</small>
+                <img src="{{ url_for('static', filename='uploads/news/' ~ news.image_path) }}" alt="{{ news.titre }}">
+            </div>
+            {% endif %}
+
+            <div class="form-actions">
+                <button class="btn btn--primary" type="submit">Enregistrer</button>
+                <a href="/admin/news" class="btn btn--secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

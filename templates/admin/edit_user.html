@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifier Utilisateur - Admin{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="card">
+        <h2>Modifier l'utilisateur</h2>
+        <p class="muted">Modifiez les informations de l'utilisateur.</p>
+    </div>
+
+    <div class="card">
+        <form method="POST" data-validate>
+            <label for="nom">Nom complet</label>
+            <input id="nom" type="text" name="nom" value="{{ user.nom }}" placeholder="Nom et prénom" required>
+
+            <label for="email">Email ou matricule</label>
+            <input id="email" type="text" name="email" value="{{ user.email }}" placeholder="email@exemple.com ou matricule" required>
+
+            <label for="role">Rôle</label>
+            <select id="role" name="role" required>
+                <option value="student" {{ 'selected' if user.role == 'student' else '' }}>Étudiant</option>
+                <option value="driver" {{ 'selected' if user.role == 'driver' else '' }}>Chauffeur</option>
+                <option value="admin" {{ 'selected' if user.role == 'admin' else '' }}>Administrateur</option>
+            </select>
+
+            <div class="form-actions">
+                <button class="btn btn--primary" type="submit">Enregistrer les modifications</button>
+                <a href="/admin/users" class="btn btn--secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</section>
+
+{% endblock %}

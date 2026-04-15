@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifier Bus - Admin{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="card">
+        <h2>Modifier le bus</h2>
+        <p class="muted">Modifiez les informations du bus.</p>
+    </div>
+
+    <div class="card">
+        <form method="POST" data-validate>
+            <label for="plaque">Plaque d'immatriculation</label>
+            <input id="plaque" type="text" name="plaque" value="{{ bus.plaque }}" placeholder="UAC-001" required>
+
+            <label for="capacite">Capacité (places)</label>
+            <input id="capacite" type="number" name="capacite" value="{{ bus.capacite }}" placeholder="50" required>
+
+            <label for="statut">Statut</label>
+            <select id="statut" name="statut" required>
+                <option value="actif" {{ 'selected' if bus.statut == 'actif' else '' }}>Actif</option>
+                <option value="maintenance" {{ 'selected' if bus.statut == 'maintenance' else '' }}>Maintenance</option>
+                <option value="indisponible" {{ 'selected' if bus.statut == 'indisponible' else '' }}>Indisponible</option>
+            </select>
+
+            <div class="form-actions">
+                <button class="btn btn--primary" type="submit">Enregistrer les modifications</button>
+                <a href="/admin/buses" class="btn btn--secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</section>
+
+{% endblock %}

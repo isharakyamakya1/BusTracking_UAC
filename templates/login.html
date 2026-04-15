@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion - UAC Transport{% endblock %}
+{% block body_class %}login-screen{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<section class="login-page">
+    <div class="login-background"></div>
+    <div class="form login-form-card simple-login-card">
+        <div class="login-form-head">
+            <img src="{{ url_for('static', filename='img/uaclogo.png') }}" alt="UAC Logo" class="simple-login-logo">
+            <span class="login-badge">Bienvenue</span>
+            <h2 class="text-center">Connexion</h2>
+            <p class="muted text-center mb-0">Utilisez votre email ou matricule pour acceder a votre espace.</p>
+        </div>
+
+        <form method="POST" data-validate>
+            <label for="email">Email ou matricule</label>
+            <input id="email" type="text" name="email" placeholder="Ex: admin ou POLY163/2022" required>
+
+            <label for="password">Mot de passe</label>
+            <div class="password-field">
+                <input id="password" type="password" name="password" placeholder="Mot de passe" required>
+                <button class="password-toggle" type="button" aria-label="Afficher ou masquer le mot de passe">Afficher</button>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn--primary" type="submit">Se connecter</button>
+                <a class="btn btn-link" href="/">Retour a l'accueil</a>
+            </div>
+        </form>
+
+        <div class="login-form-footer">
+            <p class="muted text-center">Les comptes sont crees par l'administration. <a href="/register">En savoir plus</a></p>
+        </div>
+    </div>
+</section>
+{% endblock %}

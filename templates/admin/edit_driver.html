@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifier Chauffeur - Admin{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="card">
+        <h2>Modifier le chauffeur</h2>
+        <p class="muted">Modifiez les informations du chauffeur.</p>
+    </div>
+
+    <div class="card">
+        <form method="POST" data-validate>
+            <label for="nom">Nom complet</label>
+            <input id="nom" type="text" name="nom" value="{{ driver.nom }}" placeholder="Nom du chauffeur" required>
+
+            <label for="telephone">Téléphone</label>
+            <input id="telephone" type="tel" name="telephone" value="{{ driver.telephone }}" placeholder="+243 XX XXX XXXX" required>
+
+            <label for="permis">Numéro de permis</label>
+            <input id="permis" type="text" name="permis" value="{{ driver.permis }}" placeholder="Numéro de permis" required>
+
+            <div class="form-actions">
+                <button class="btn btn--primary" type="submit">Enregistrer les modifications</button>
+                <a href="/admin/drivers" class="btn btn--secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</section>
+
+{% endblock %}

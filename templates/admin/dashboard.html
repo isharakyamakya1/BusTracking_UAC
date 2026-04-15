@@ -1,0 +1,134 @@
+﻿{% extends "base.html" %}
+{% block title %}Administration - UAC Transport{% endblock %}
+
+{% block content %}
+<div class="container my-5 admin-page">
+    <div class="page-header mb-4">
+        <div>
+            <h1>Tableau de Bord Administratif</h1>
+            <p class="text-muted">Vue d'ensemble rapide du parc, des utilisateurs, des trajets et des publications.</p>
+        </div>
+        <span class="badge bg-primary px-3 py-2">Session : {{ session['nom'] }}</span>
+    </div>
+
+    <div class="row g-4 dashboard-summary">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Bus actifs</span>
+                    <h3 class="widget-value">{{ total_buses }}</h3>
+                    <p class="text-muted">Véhicules disponibles dans le parc.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Chauffeurs</span>
+                    <h3 class="widget-value">{{ total_drivers }}</h3>
+                    <p class="text-muted">Chauffeurs enregistrés et actifs.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Étudiants</span>
+                    <h3 class="widget-value">{{ total_students }}</h3>
+                    <p class="text-muted">Utilisateurs étudiants inscrits.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Tarifs</span>
+                    <h3 class="widget-value">{{ total_routes }}</h3>
+                    <p class="text-muted">Itineraires et prix actuellement configures.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Actualités</span>
+                    <h3 class="widget-value">{{ total_news }}</h3>
+                    <p class="text-muted">Messages publiés pour le campus.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card widget-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Lieux</span>
+                    <h3 class="widget-value">{{ total_locations }}</h3>
+                    <p class="text-muted">Points de rendez-vous et emplacements enregistres.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 action-grid mt-2">
+        <div class="col-lg-4">
+            <div class="card action-card shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Parc</span>
+                    <h5 class="card-title">Gestion des Bus</h5>
+                    <p class="text-muted">Voir les bus, ajouter un nouveau véhicule ou modifier des informations existantes.</p>
+                    <a href="/admin/buses" class="btn btn-outline-primary">Gérer les Bus</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card action-card shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Comptes</span>
+                    <h5 class="card-title">Chauffeurs & Comptes</h5>
+                    <p class="text-muted">Gérer les chauffeurs et les comptes admin avec accès sécurisé.</p>
+                    <a href="/admin/users" class="btn btn-outline-dark">Gérer les Comptes</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card action-card shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Planning</span>
+                    <h5 class="card-title">Horaires et Affectations</h5>
+                    <p class="text-muted">Planifier les trajets, les heures de depart et les attributions des bus.</p>
+                    <a href="/admin/schedules" class="btn btn-outline-info">Voir les Horaires</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card action-card shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Tarification</span>
+                    <h5 class="card-title">Tarifs et Routes</h5>
+                    <p class="text-muted">Ajuster les prix des itineraires et organiser les liaisons disponibles.</p>
+                    <a href="/admin/routes" class="btn btn-outline-success">Modifier les Prix</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card action-card shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Communication</span>
+                    <h5 class="card-title">Actualites Campus</h5>
+                    <p class="text-muted">Publier une annonce ou gerer les actualites deja diffusees.</p>
+                    <a href="/admin/news" class="btn btn-outline-secondary">Voir les Actualites</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card action-card shadow-sm h-100">
+                <div class="card-body">
+                    <span class="widget-label">Emplacements</span>
+                    <h5 class="card-title">Localisations</h5>
+                    <p class="text-muted">Consulter les points de rendez-vous et les lieux stratégiques.</p>
+                    <a href="/admin/locations" class="btn btn-outline-primary">Gérer les Lieux</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

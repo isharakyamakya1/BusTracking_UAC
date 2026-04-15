@@ -1,0 +1,545 @@
+{% extends 'base.html' %}
+{% block title %}Tableau de Bord Etudiant - UAC{% endblock %}
+{% block content %}
+<div class="student-page">
+    <div class="page-header mb-4">
+        <h1>Tableau de Bord Etudiant</h1>
+        <p class="text-muted">Bienvenue {{ user_info.nom if user_info else 'Etudiant' }}. Le tableau de bord affiche une seule rubrique a la fois.</p>
+    </div>
+
+    <div class="student-nav mb-4">
+        <a href="#actualites" class="student-nav-link active" data-target="actualites">Actualites</a>
+        <a href="#profil" class="student-nav-link" data-target="profil">Profil</a>
+        <a href="#horaires" class="student-nav-link" data-target="horaires">Horaires</a>
+        <a href="#prix" class="student-nav-link" data-target="prix">Prix</a>
+        <a href="#suivi" class="student-nav-link" data-target="suivi">Suivre le bus</a>
+    </div>
+
+    <section id="actualites" class="section-block is-visible">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                    <div>
+                        <h5 class="mb-1"><i class="bi bi-newspaper"></i> Actualités du campus</h5>
+                        <p class="text-muted mb-0">Les dernières annonces, événements et informations pour les étudiants.</p>
+                    </div>
+                    <a href="/news" class="btn btn-outline-primary btn-sm">Voir toutes les actualités</a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if news %}
+                <div class="row g-4">
+                    {% for item in news %}
+                    <div class="col-md-6 col-xl-4">
+                        <a href="/news/{{ item.id }}" class="news-card text-decoration-none text-reset">
+                            <div class="position-relative overflow-hidden">
+                                {% if item.image_path %}
+                                <img src="{{ url_for('static', filename='uploads/news/' ~ item.image_path) }}" alt="{{ item.titre }}" class="news-image w-100">
+                                {% else %}
+                                <div class="news-image news-image-placeholder d-flex align-items-center justify-content-center w-100">
+                                    <span class="fw-semibold">Actualité UAC</span>
+                                </div>
+                                {% endif %}
+                                <div class="news-overlay"></div>
+                                <div class="position-absolute top-0 end-0 m-3 badge bg-white text-dark shadow-sm">{{ item.date[:10] }}</div>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title">{{ item.titre }}</h6>
+                                <p class="card-text mb-3">{{ item.contenu[:130] }}{% if item.contenu|length > 130 %}...{% endif %}</p>
+                                <div class="stats flex-wrap gap-2">
+                                    <span class="badge bg-primary-light text-primary"><i class="bi bi-person-circle"></i> {{ item.admin_name or 'UAC' }}</span>
+                                    <span class="badge bg-info-light text-info"><i class="bi bi-chat"></i> {{ item.comment_count }}</span>
+                                    <span class="badge bg-danger-light text-danger"><i class="bi bi-heart"></i> {{ item.like_count }}</span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Aucune actualité disponible pour le moment.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section id="profil" class="section-block mt-4">
+        <div class="card shadow-sm overflow-hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-person-circle"></i> Mon Profil</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 class="mb-1">Nom</h6>
+                    <p class="text-muted mb-0">{{ user_info.nom if user_info else 'Non renseigne' }}</p>
+                </div>
+                <div class="mb-3">
+                    <h6 class="mb-1">Email</h6>
+                    <p class="text-muted mb-0">{{ user_info.email if user_info else 'Non renseigne' }}</p>
+                </div>
+                <div class="mb-3">
+                    <h6 class="mb-1">Matricule</h6>
+                    <p class="text-muted mb-0">{{ user_info.matricule if user_info else 'Non renseigne' }}</p>
+                </div>
+                <div>
+                    <h6 class="mb-1">Statut</h6>
+                    <p class="text-success mb-0">Etudiant</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="horaires" class="section-block mt-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-event"></i> Horaires a venir</h5>
+            </div>
+            <div class="card-body">
+                {% if schedules %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Heure</th>
+                                <th>Destination</th>
+                                <th>Bus</th>
+                                <th>Chauffeur</th>
+                                <th>Capacite</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for schedule in schedules %}
+                            <tr>
+                                <td><strong>{{ schedule.date }}</strong></td>
+                                <td>{{ schedule.heure_depart }}</td>
+                                <td><span class="badge bg-success">{{ schedule.destination }}</span></td>
+                                <td>{{ schedule.plaque }}</td>
+                                <td>{{ schedule.driver_name }}</td>
+                                <td><span class="badge bg-secondary">{{ schedule.capacite }} places</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Aucun horaire disponible pour le moment.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section id="prix" class="section-block mt-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-cash-coin"></i> Prix des trajets</h5>
+            </div>
+            <div class="card-body">
+                {% if routes %}
+                <div class="row g-3">
+                    {% for route in routes %}
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card h-100 route-card">
+                            <div class="card-body text-center">
+                                <h6 class="fw-bold mb-3">{{ route.depart }} -> {{ route.destination }}</h6>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <div>
+                                        <small class="text-muted">Aller</small>
+                                        <p class="mb-0 text-primary fw-bold">{{ route.prix_aller }} FC</p>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted">Retour</small>
+                                        <p class="mb-0 text-success fw-bold">{{ route.prix_retour }} FC</p>
+                                    </div>
+                                </div>
+                                <div class="text-muted small">Total : <strong>{{ route.prix_aller + route.prix_retour }} FC</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Aucun tarif configure pour le moment.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section id="suivi" class="section-block mt-4">
+        <div class="row gy-4">
+            <div class="col-xl-8">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Suivre le bus en temps reel</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if bus_current %}
+                        {% set current_destination = schedules[0].destination if schedules else None %}
+                        {% set current_station = bus_current.dernier_arret or 'une position en cours de mise a jour' %}
+                        <div class="map-preview mb-3">
+                            <iframe
+                                class="map-frame"
+                                loading="lazy"
+                                referrerpolicy="no-referrer-when-downgrade"
+                                src="https://maps.google.com/maps?q={{ bus_current.current_lat }},{{ bus_current.current_lon }}&z=15&output=embed">
+                            </iframe>
+                            <div class="map-overlay-card">
+                                <div class="map-pin">📍</div>
+                                <div class="map-label">Position actuelle du bus</div>
+                                <div class="map-coords">Latitude: {{ bus_current.current_lat }}, Longitude: {{ bus_current.current_lon }}</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="live-status-card">
+                                    <h6 class="mb-2">Bus</h6>
+                                    <p class="mb-0 fw-bold">{{ bus_current.plaque }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="live-status-card">
+                                    <h6 class="mb-2">Dernier arret</h6>
+                                    <p class="mb-0">{{ bus_current.dernier_arret or 'Non defini' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bus-status-banner mt-3">
+                            {% if current_destination %}
+                            <strong>Statut :</strong> Le bus est en route pour <strong>{{ current_destination }}</strong>.
+                            {% else %}
+                            <strong>Statut :</strong> Le bus est actuellement a <strong>{{ current_station }}</strong>.
+                            {% endif %}
+                        </div>
+                        <div class="mt-3 text-muted small">
+                            Les donnees de position sont mises a jour automatiquement des qu'un bus envoie sa position.
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <p class="text-muted">Aucune position de bus disponible actuellement.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-4">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-person-workspace"></i> Infos du chauffeur</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if schedules %}
+                        <p class="text-muted small mb-3">Dernier trajet planifie</p>
+                        <div class="mb-3">
+                            <strong>Bus :</strong> {{ schedules[0].plaque }}
+                        </div>
+                        <div class="mb-3">
+                            <strong>Chauffeur :</strong> {{ schedules[0].driver_name }}
+                        </div>
+                        <div class="mb-3">
+                            <strong>Destination :</strong> {{ schedules[0].destination }}
+                        </div>
+                        <div class="mb-3">
+                            <strong>Depart :</strong> {{ schedules[0].date }} a {{ schedules[0].heure_depart }}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted">Aucune information de chauffeur disponible.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+.student-page {
+    scroll-behavior: smooth;
+}
+
+.student-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.student-nav-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(13, 110, 253, 0.18);
+    background: #ffffff;
+    color: var(--uac-blue);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.25s ease;
+}
+
+.student-nav-link.active,
+.student-nav-link:hover {
+    background: var(--primary-blue);
+    color: white;
+    border-color: transparent;
+}
+
+.section-block {
+    scroll-margin-top: 110px;
+    display: none;
+}
+
+.section-block.is-visible {
+    display: block;
+}
+
+.map-preview {
+    min-height: 300px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(13, 110, 253, 0.08), rgba(13, 110, 253, 0.02));
+    border: 1px solid rgba(13, 110, 253, 0.12);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 0;
+    overflow: hidden;
+}
+
+.map-pin {
+    font-size: 3rem;
+}
+
+.map-frame {
+    width: 100%;
+    min-height: 360px;
+    border: 0;
+    display: block;
+}
+
+.map-overlay-card {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 14px 32px rgba(14, 36, 66, 0.16);
+}
+
+.map-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-top: 0.75rem;
+}
+
+.map-coords {
+    color: #394150;
+    margin-top: 0.5rem;
+}
+
+.live-status-card {
+    padding: 1rem;
+    border-radius: 16px;
+    background: rgba(13, 110, 253, 0.07);
+    border: 1px solid rgba(13, 110, 253, 0.12);
+}
+
+.bus-status-banner {
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.04));
+    border: 1px solid rgba(13, 110, 253, 0.14);
+    color: #173a63;
+}
+
+.route-card {
+    border-radius: 18px;
+    border: 1px solid rgba(13, 110, 253, 0.12);
+}
+
+.student-page .card-header {
+    border-bottom: 1px solid rgba(13, 110, 253, 0.1);
+}
+
+.student-page .card {
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.student-page .news-item {
+    border-bottom: 1px solid rgba(13, 110, 253, 0.08);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.student-page .news-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.student-page .news-item .badge {
+    background: rgba(13, 110, 253, 0.08);
+    color: var(--primary-blue);
+}
+
+.news-card {
+    border: none;
+    border-radius: 18px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    background: white;
+    display: block;
+    color: inherit;
+}
+
+.news-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0, 61, 130, 0.25) !important;
+}
+
+.news-image,
+.news-image-placeholder {
+    min-height: 200px;
+    width: 100%;
+    object-fit: cover;
+    display: block;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.news-image-placeholder {
+    background: linear-gradient(135deg, rgba(0, 61, 130, 0.9), rgba(0, 86, 179, 0.75));
+    color: white;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 3.5rem 1rem;
+}
+
+.news-card:hover .news-image {
+    transform: scale(1.05);
+}
+
+.news-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0, 61, 130, 0.25) 0%, rgba(0, 86, 179, 0.04) 100%);
+    opacity: 0.25;
+    transition: opacity 0.3s ease;
+}
+
+.news-card:hover .news-overlay {
+    opacity: 0.45;
+}
+
+.card-title {
+    color: var(--text-dark);
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    transition: color 0.3s ease;
+}
+
+.stats {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.badge.bg-primary-light {
+    background: rgba(13, 110, 253, 0.1);
+}
+
+.badge.bg-info-light {
+    background: rgba(13, 202, 240, 0.14);
+}
+
+.badge.bg-danger-light {
+    background: rgba(220, 53, 69, 0.12);
+}
+
+.student-page .table th {
+    background: rgba(13, 110, 253, 0.06);
+    border-bottom: 2px solid rgba(13, 110, 253, 0.12);
+}
+
+.student-page .badge {
+    font-size: 0.75rem;
+}
+
+@media (max-width: 767px) {
+    .student-nav {
+        justify-content: center;
+    }
+
+    .student-nav-link {
+        flex: 1 1 45%;
+        text-align: center;
+    }
+
+    .map-frame {
+        min-height: 280px;
+    }
+
+    .map-overlay-card {
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: 0.75rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const navLinks = document.querySelectorAll(".student-nav-link");
+    const sections = document.querySelectorAll(".section-block");
+
+    function showSection(sectionId) {
+        sections.forEach((section) => {
+            section.classList.toggle("is-visible", section.id === sectionId);
+        });
+
+        navLinks.forEach((link) => {
+            link.classList.toggle("active", link.dataset.target === sectionId);
+        });
+    }
+
+    navLinks.forEach((link) => {
+        link.addEventListener("click", function (event) {
+            event.preventDefault();
+            window.location.hash = this.dataset.target;
+            showSection(this.dataset.target);
+        });
+    });
+
+    if (!window.location.hash) {
+        history.replaceState(null, "", "#actualites");
+    }
+
+    const initialSection = window.location.hash ? window.location.hash.replace("#", "") : "actualites";
+    showSection(initialSection || "actualites");
+
+    window.addEventListener("hashchange", function () {
+        const sectionId = window.location.hash ? window.location.hash.replace("#", "") : "actualites";
+        showSection(sectionId || "actualites");
+    });
+});
+</script>
+{% endblock %}

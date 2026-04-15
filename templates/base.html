@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}UAC Transport{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+<header class="site-banner">
+    <div class="banner-inner">
+        <span class="banner-item">Universite de l'Assomption au Congo</span>
+        <span class="banner-item">Mon Paradis</span>
+        <span class="banner-item">Transport Intelligent</span>
+    </div>
+</header>
+
+<header class="topbar">
+    <div class="topbar-left">
+        <button class="menu-btn" type="button" aria-label="Ouvrir le menu" onclick="toggleMenu()">
+            <i class="bi bi-list"></i>
+        </button>
+        <a href="/" class="brand-wrap topbar-brand">
+            <img src="{{ url_for('static', filename='img/uaclogo.png') }}" alt="UAC Logo" class="topbar-logo">
+            <div>
+                <h1>UAC Transport</h1>
+                <p class="muted mb-0">
+                    {% if session.get('role') == 'admin' %}
+                    Administration
+                    {% elif session.get('role') == 'student' %}
+                    Espace etudiant
+                    {% elif session.get('role') == 'driver' %}
+                    Espace chauffeur
+                    {% else %}
+                    Suivi et actualites
+                    {% endif %}
+                </p>
+            </div>
+        </a>
+    </div>
+    <div class="topbar-actions">
+        {% if session.get('user_id') %}
+        <span class="topbar-user-chip">
+            <i class="bi bi-person-circle"></i>
+            {{ session.get('nom') }}
+        </span>
+        <a class="btn btn-link topbar-link" href="/logout">Deconnexion</a>
+        {% else %}
+        <a class="btn btn-link topbar-link" href="/login">Connexion</a>
+        {% endif %}
+    </div>
+</header>
+
+<aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-brand">
+            <img src="{{ url_for('static', filename='img/uaclogo.png') }}" alt="UAC Logo" class="sidebar-logo">
+            <div>
+                <h2>UAC Transport</h2>
+                <p class="muted mb-0">Navigation principale</p>
+            </div>
+        </div>
+        <button class="close-btn" type="button" aria-label="Fermer" onclick="toggleMenu()">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a href="/"><i class="bi bi-house-door"></i><span>Accueil</span></a>
+
+        {% if not session.get('user_id') %}
+        <a href="/login"><i class="bi bi-box-arrow-in-right"></i><span>Connexion</span></a>
+        {% endif %}
+
+        {% if session.get('role') == 'admin' %}
+        <a href="/admin"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+        <a href="/admin/buses"><i class="bi bi-bus-front"></i><span>Bus</span></a>
+        <a href="/admin/users"><i class="bi bi-people"></i><span>Comptes</span></a>
+        <a href="/admin/students"><i class="bi bi-mortarboard"></i><span>Etudiants</span></a>
+        <a href="/admin/schedules"><i class="bi bi-calendar-week"></i><span>Horaires</span></a>
+        <a href="/admin/routes"><i class="bi bi-signpost-split"></i><span>Tarifs et routes</span></a>
+        <a href="/admin/locations"><i class="bi bi-geo-alt"></i><span>Lieux</span></a>
+        <a href="/admin/news"><i class="bi bi-megaphone"></i><span>Actualites</span></a>
+        <a href="/admin/assignments"><i class="bi bi-diagram-3"></i><span>Affectations</span></a>
+        {% endif %}
+
+        {% if session.get('role') == 'driver' %}
+        <a href="/driver"><i class="bi bi-truck-front"></i><span>Espace chauffeur</span></a>
+        {% endif %}
+
+        {% if session.get('role') == 'student' %}
+        <a href="/student#actualites"><i class="bi bi-newspaper"></i><span>Actualites</span></a>
+        <a href="/student#profil"><i class="bi bi-person-vcard"></i><span>Profil</span></a>
+        <a href="/student#horaires"><i class="bi bi-calendar-event"></i><span>Horaires</span></a>
+        <a href="/student#prix"><i class="bi bi-cash-stack"></i><span>Prix</span></a>
+        <a href="/student#suivi"><i class="bi bi-broadcast"></i><span>Suivre le bus</span></a>
+        {% endif %}
+    </nav>
+</aside>
+
+<div id="overlay" class="overlay" onclick="toggleMenu()"></div>
+
+<main class="content">
+    {% block content %}{% endblock %}
+</main>
+
+{% block footer %}
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-section">
+            <h3>UAC Transport</h3>
+            <p>Une plateforme moderne pour informer, organiser et suivre le transport universitaire en temps reel.</p>
+        </div>
+        <div class="footer-section">
+            <h4>Acces</h4>
+            <ul>
+                <li><a href="/">Accueil</a></li>
+                <li><a href="/login">Connexion</a></li>
+                <li><a href="/">Actualites</a></li>
+            </ul>
+        </div>
+        <div class="footer-section">
+            <h4>Modules</h4>
+            <ul>
+                <li><a href="/admin">Administration</a></li>
+                <li><a href="/student">Espace etudiant</a></li>
+                <li><a href="/driver">Espace chauffeur</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p class="mb-0">&copy; 2026 UAC Transport. Tous droits reserves.</p>
+    </div>
+</footer>
+{% endblock %}
+
+<div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+</body>
+</html>

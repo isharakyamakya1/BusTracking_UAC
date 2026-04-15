@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ news_item.titre }} - Actualite{% endblock %}
+
+{% block content %}
+<div class="news-detail-page">
+    <div class="container">
+        <div class="news-detail-shell">
+            <article class="news-detail-card">
+                <div class="news-detail-head">
+                    <div class="news-detail-author">
+                        <div class="news-avatar large">
+                            <i class="fas fa-building-columns"></i>
+                        </div>
+                        <div>
+                            <strong>Administration UAC</strong>
+                            <span>Publie par {{ news_item.admin_name or 'Admin' }} le {{ news_item.date[:10] }}</span>
+                        </div>
+                    </div>
+                    <a href="/" class="news-back-link"><i class="fas fa-arrow-left"></i> Retour au feed</a>
+                </div>
+
+                {% if news_item.image_path %}
+                <div class="news-detail-media">
+                    <img src="{{ url_for('static', filename='uploads/news/' ~ news_item.image_path) }}" alt="{{ news_item.titre }}">
+                </div>
+                {% endif %}
+
+                <div class="news-detail-body">
+                    <h1>{{ news_item.titre }}</h1>
+                    <p class="news-detail-text">{{ news_item.contenu }}</p>
+                </div>
+
+                <div class="news-social-summary">
+                    <span><i class="fas fa-heart"></i> {{ like_count }} personnes aiment cette actualite</span>
+                    <span><i class="fas fa-comments"></i> {{ comments|length }} commentaires</span>
+                </div>
+
+                <div class="news-social-actions">
+                    <form method="POST" action="/news/{{ news_item.id }}/like" class="m-0">
+                        <button class="feed-action-btn primary" type="submit">
+                            <i class="fas fa-heart"></i>
+                            <span>{% if user_liked %}Je n'aime plus{% else %}J'aime{% endif %}</span>
+                        </button>
+                    </form>
+                    <a href="#comment-form" class="feed-action-btn">
+                        <i class="fas fa-comment-dots"></i>
+                        <span>Commenter</span>
+                    </a>
+                </div>
+            </article>
+
+            <aside class="news-detail-side">
+                <div class="comment-panel">
+                    <div class="comment-panel-header">
+                        <h2>Commentaires</h2>
+                        <span>{{ comments|length }}</span>
+                    </div>
+
+                    {% if session.get('user_id') %}
+                    <form id="comment-form" method="POST" action="/news/{{ news_item.id }}/comment" class="comment-form" data-validate>
+                        <textarea class="form-control mb-3" name="contenu" rows="4" placeholder="Ecrire un commentaire..." required></textarea>
+                        <button class="btn btn-primary" type="submit">Publier le commentaire</button>
+                    </form>
+                    {% else %}
+                    <div class="comment-login-state">
+                        <p class="mb-2">Connectez-vous pour reagir a cette actualite.</p>
+                        <a href="/login" class="btn btn-outline-primary">Se connecter</a>
+                    </div>
+                    {% endif %}
+
+                    <div class="comment-stream">
+                        {% if comments %}
+                            {% for comment in comments %}
+                            <div class="comment-bubble">
+                                <div class="comment-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="comment-content">
+                                    <div class="comment-meta">
+                                        <strong>{{ comment.user_name or 'Utilisateur' }}</strong>
+                                        <span>{{ comment.date[:16] }}</span>
+                                    </div>
+                                    <p>{{ comment.contenu }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                        <div class="comment-empty">
+                            <i class="fas fa-comments"></i>
+                            <p>Aucun commentaire pour le moment.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+</div>
+{% endblock %}

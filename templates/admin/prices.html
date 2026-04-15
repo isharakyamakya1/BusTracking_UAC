@@ -1,0 +1,35 @@
+<h2>Gestion des Prix</h2>
+
+<form method="POST">
+    <input type="text" name="depart" placeholder="Lieu de départ" required>
+    <input type="text" name="destination" placeholder="Destination" required>
+    <input type="number" name="prix" placeholder="Prix (FC)" required>
+
+    <select name="type_trajet">
+        <option value="aller">Aller</option>
+        <option value="retour">Retour</option>
+    </select>
+
+    <button type="submit">Ajouter Prix</button>
+</form>
+
+<hr>
+
+<h3>Liste des Prix</h3>
+<table border="1">
+    <tr>
+        <th>Départ</th>
+        <th>Destination</th>
+        <th>Prix</th>
+        <th>Type</th>
+    </tr>
+
+    {% for p in prices %}
+    <tr>
+        <td>{{ p.depart }}</td>
+        <td>{{ p.destination }}</td>
+        <td>{{ p.prix }} FC</td>
+        <td>{{ p.type_trajet }}</td>
+    </tr>
+    {% endfor %}
+</table>

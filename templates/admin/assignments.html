@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Affectations des Bus - Admin{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="card">
+        <h2>Affectations des Bus</h2>
+        <p class="muted">Assignez les chauffeurs aux bus pour les trajets planifiés.</p>
+    </div>
+
+    <div class="card">
+        <h3>Planifier un trajet</h3>
+        <form method="POST" data-validate>
+            <label for="bus_id">Bus</label>
+            <select id="bus_id" name="bus_id" required>
+                <option value="">Sélectionnez un bus</option>
+                {% for bus in buses %}
+                <option value="{{ bus.id }}">{{ bus.plaque }} ({{ bus.capacite }} places)</option>
+                {% endfor %}
+            </select>
+
+            <label for="driver_id">Chauffeur</label>
+            <select id="driver_id" name="driver_id" required>
+                <option value="">Sélectionnez un chauffeur</option>
+                {% for driver in drivers %}
+                <option value="{{ driver.id }}">{{ driver.nom }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="date">Date</label>
+            <input id="date" type="date" name="date" required>
+
+            <label for="heure_depart">Heure de départ</label>
+            <input id="heure_depart" type="time" name="heure_depart" required>
+
+            <label for="heure_arrivee">Heure d'arrivée estimée</label>
+            <input id="heure_arrivee" type="time" name="heure_arrivee" required>
+
+            <label for="route_id">Trajet (Départ → Destination)</label>
+            <select id="route_id" name="route_id" required>
+                <option value="">Sélectionnez le trajet</option>
+                {% for route in routes %}
+                <option value="{{ route.id }}">
+                    {% set depart = "" %}
+                    {% set destination = "" %}
+                    {% for loc in locations %}
+                        {% if loc.id == route.depart_id %}
+                            {% set depart = loc.nom %}
+                        {% endif %}
+                        {% if loc.id == route.destination_id %}
+                            {% set destination = loc.nom %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ depart }} → {{ destination }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <div class="form-actions">
+                <button class="btn btn--primary" type="submit">Planifier le trajet</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>Trajets planifiés</h3>
+        {% if assignments %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Bus</th>
+                    <th>Chauffeur</th>
+                    <th>Trajet</th>
+                    <th>Départ</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assign in assignments %}
+                <tr>
+                    <td>{{ assign.date }}</td>
+                    <td><strong>{{ assign.plaque }}</strong></td>
+                    <td>{{ assign.driver }}</td>
+                    <td>{{ assign.depart }} → {{ assign.destination }}</td>
+                    <td>{{ assign.heure_depart }}</td>
+                    <td>
+                        <span class="badge badge--{{ 'pending' if assign.statut == 'planifie' else 'in-progress' if assign.statut == 'en-cours' else 'completed' }}">
+                            {{ assign.statut }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="muted">Aucun trajet planifié. Créez-en un.</p>
+        {% endif %}
+    </div>
+
+    <a href="/admin" class="btn btn--primary">Retour</a>
+</section>
+
+<style>
+.badge {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badge--pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.badge--in-progress {
+    background: rgba(13, 110, 253, 0.2);
+    color: #0d6efd;
+}
+
+.badge--completed {
+    background: rgba(72, 187, 120, 0.2);
+    color: #248f3d;
+}
+</style>
+
+{% endblock %}

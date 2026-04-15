@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestion des Chauffeurs - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <div class="page-header mb-4">
+        <h1>Gestion des Chauffeurs</h1>
+        <p class="text-muted">Ajouter et gerer les chauffeurs avec leurs informations de contact, permis et mot de passe.</p>
+    </div>
+
+    <div class="admin-form-section">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2>Ajouter un chauffeur</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/admin/add_driver" class="row gy-3" data-validate>
+                    <div class="col-md-6">
+                        <label class="form-label">Nom complet</label>
+                        <input type="text" name="nom" class="form-control" placeholder="Nom du chauffeur" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email / Identifiant</label>
+                        <input type="text" name="email" class="form-control" placeholder="chauffeur@uac.cd" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Telephone</label>
+                        <input type="tel" name="telephone" class="form-control" placeholder="+243 XX XXX XXXX" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Numero de permis</label>
+                        <input type="text" name="permis" class="form-control" placeholder="Numero de permis" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mot de passe</label>
+                        <input type="password" name="password" class="form-control" placeholder="Mot de passe du chauffeur" required>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Ajouter le chauffeur</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-list-section mt-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2 class="mb-0">Liste des chauffeurs</h2>
+            </div>
+            <div class="card-body p-0">
+                {% if drivers %}
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom</th>
+                                <th>Telephone</th>
+                                <th>Permis</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for driver in drivers %}
+                            <tr>
+                                <td>{{ driver.id }}</td>
+                                <td><strong>{{ driver.nom }}</strong></td>
+                                <td>{{ driver.telephone }}</td>
+                                <td>{{ driver.permis }}</td>
+                                <td>
+                                    <a href="/admin/edit_driver/{{ driver.id }}" class="btn btn-sm btn-outline-primary">Modifier</a>
+                                    <a href="/admin/delete_driver/{{ driver.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Confirmez la suppression?')">Supprimer</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <p>Aucun chauffeur enregistre. Ajoutez-en un pour commencer.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="/admin" class="btn btn-secondary">Retour au tableau de bord</a>
+    </div>
+</div>
+{% endblock %}

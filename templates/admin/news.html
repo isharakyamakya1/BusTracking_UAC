@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Gestion des Actualités - Admin{% endblock %}
+{% block content %}
+<div class="admin-page">
+    <div class="page-header mb-4">
+        <h1>Gestion des Actualités</h1>
+        <p class="text-muted">Publiez des news avec titre, contenu et photo pour le campus.</p>
+    </div>
+
+    <div class="admin-form-section">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2>Publier une news</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" class="row gy-3" data-validate>
+                    <div class="col-md-12">
+                        <label class="form-label">Titre</label>
+                        <input type="text" name="titre" class="form-control" placeholder="Titre de l'actualité" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Contenu</label>
+                        <textarea name="contenu" class="form-control" rows="5" placeholder="Description de la news" required></textarea>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Photo</label>
+                        <input type="file" name="image" class="form-control" accept="image/*">
+                    </div>
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-primary">Publier</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-list-section mt-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2 class="mb-0">Actualités publiées</h2>
+            </div>
+            <div class="card-body">
+                {% if news_items %}
+                <div class="row g-4">
+                    {% for item in news_items %}
+                    <div class="col-md-6 col-xl-4">
+                        <div class="news-card">
+                            <div class="position-relative overflow-hidden">
+                                {% if item.image_path %}
+                                <img src="{{ url_for('static', filename='uploads/news/' ~ item.image_path) }}" alt="{{ item.titre }}" class="news-image w-100">
+                                {% else %}
+                                <div class="news-image news-image-placeholder d-flex align-items-center justify-content-center w-100">
+                                    <span class="fw-semibold">Actualité UAC</span>
+                                </div>
+                                {% endif %}
+                                <div class="news-overlay"></div>
+                                <div class="position-absolute top-0 end-0 m-3 badge bg-white text-dark shadow-sm">{{ item.date[:10] }}</div>
+                            </div>
+                            <div class="card-body">
+                                <h4 class="card-title">{{ item.titre }}</h4>
+                                <p class="card-text text-muted">{{ item.contenu[:140] }}{% if item.contenu|length > 140 %}...{% endif %}</p>
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <a href="/admin/edit_news/{{ item.id }}" class="btn btn-sm btn-outline-primary">Modifier</a>
+                                    <a href="/admin/delete_news/{{ item.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Confirmez la suppression?')">Supprimer</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <p>Aucune actualité publiée pour le moment.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="/admin" class="btn btn-secondary">Retour au tableau de bord</a>
+    </div>
+</div>
+{% endblock %}

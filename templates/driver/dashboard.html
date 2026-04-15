@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+{% block title %}Espace Chauffeur - UAC{% endblock %}
+
+{% block content %}
+<div class="driver-page">
+    <div class="page-header mb-4">
+        <div>
+            <h1>Espace Chauffeur</h1>
+            <p class="text-muted">Consultez votre mission, votre bus, vos trajets a venir et les annonces recentes de l'universite.</p>
+        </div>
+        <span class="badge bg-primary px-3 py-2">{{ driver_info.nom if driver_info else 'Chauffeur UAC' }}</span>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="driver-stat-card">
+                <span class="driver-stat-label">Prochain trajet</span>
+                <strong>{{ current_trip.destination if current_trip else 'Aucun trajet' }}</strong>
+                <p>{{ current_trip.date }} a {{ current_trip.heure_depart }}{% if not current_trip %}Non planifie{% endif %}</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="driver-stat-card">
+                <span class="driver-stat-label">Bus assigne</span>
+                <strong>{{ current_bus.plaque if current_bus else 'Non defini' }}</strong>
+                <p>{% if current_bus %}Capacite : {{ current_bus.capacite }} places{% else %}Aucune affectation active{% endif %}</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="driver-stat-card">
+                <span class="driver-stat-label">Dernier arret</span>
+                <strong>{{ current_bus.dernier_arret if current_bus and current_bus.dernier_arret else 'Non defini' }}</strong>
+                <p>Point de reference actuel</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="driver-stat-card">
+                <span class="driver-stat-label">Position GPS</span>
+                <strong>{% if current_bus and current_bus.current_lat and current_bus.current_lon %}Active{% else %}Indisponible{% endif %}</strong>
+                <p>{% if current_bus and current_bus.current_lat and current_bus.current_lon %}{{ current_bus.current_lat }}, {{ current_bus.current_lon }}{% else %}Aucune coordonnee enregistree{% endif %}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Position du vehicule</h5>
+                </div>
+                <div class="card-body">
+                    {% if current_bus and current_bus.current_lat and current_bus.current_lon %}
+                    <div class="driver-map-box mb-3">
+                        <iframe
+                            class="driver-map-frame"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            src="https://maps.google.com/maps?q={{ current_bus.current_lat }},{{ current_bus.current_lon }}&z=15&output=embed">
+                        </iframe>
+                    </div>
+                    <div class="driver-route-banner">
+                        {% if current_trip %}
+                        <strong>Mission actuelle :</strong> Vous etes programme pour le trajet vers <strong>{{ current_trip.destination }}</strong> le <strong>{{ current_trip.date }}</strong> a <strong>{{ current_trip.heure_depart }}</strong>.
+                        {% else %}
+                        <strong>Mission actuelle :</strong> Aucun trajet n'est encore programme pour vous.
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <p class="text-muted">Aucune position GPS disponible pour votre vehicule.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-calendar-event"></i> Mes horaires</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if driver_schedules %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Heure</th>
+                                    <th>Destination</th>
+                                    <th>Bus</th>
+                                    <th>Disponibilite</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for schedule in driver_schedules %}
+                                <tr>
+                                    <td>{{ schedule.date }}</td>
+                                    <td>{{ schedule.heure_depart }}</td>
+                                    <td><span class="badge bg-success">{{ schedule.destination }}</span></td>
+                                    <td>{{ schedule.plaque or 'Non defini' }}</td>
+                                    <td>{{ schedule.disponible or 'oui' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-4 text-center text-muted">
+                        <p>Aucun horaire ne vous est encore assigne.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person-badge"></i> Mon profil</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Nom</strong>
+                        <p class="mb-0 text-muted">{{ driver_info.nom if driver_info else 'Non renseigne' }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Identifiant</strong>
+                        <p class="mb-0 text-muted">{{ driver_info.email if driver_info else 'Non renseigne' }}</p>
+                    </div>
+                    <div>
+                        <strong>Role</strong>
+                        <p class="mb-0 text-muted">Chauffeur</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-megaphone"></i> Annonces recentes</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_news %}
+                    <div class="driver-news-list">
+                        {% for item in recent_news %}
+                        <article class="driver-news-item">
+                            <span class="driver-news-date">{{ item.date[:10] }}</span>
+                            <h6>{{ item.titre }}</h6>
+                            <p>{{ item.contenu[:110] }}{% if item.contenu|length > 110 %}...{% endif %}</p>
+                            <a href="/news/{{ item.id }}">Lire plus</a>
+                        </article>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Aucune annonce recente.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.driver-page .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    padding: 1.75rem;
+    border-radius: 28px;
+    background: linear-gradient(135deg, #0a2446 0%, #0f5eb7 100%);
+    color: white;
+    box-shadow: 0 24px 50px rgba(7, 28, 55, 0.18);
+}
+
+.driver-page .page-header .text-muted,
+.driver-page .page-header h1 {
+    color: white !important;
+}
+
+.driver-stat-card {
+    height: 100%;
+    padding: 1.3rem;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(13, 110, 253, 0.08);
+    box-shadow: 0 18px 40px rgba(12, 37, 67, 0.06);
+}
+
+.driver-stat-label {
+    display: block;
+    color: var(--uac-blue);
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+}
+
+.driver-stat-card strong {
+    display: block;
+    font-size: 1.2rem;
+    margin-bottom: 0.4rem;
+}
+
+.driver-stat-card p {
+    color: #67788b;
+    margin: 0;
+}
+
+.driver-page .card {
+    border-radius: 24px;
+    border: 1px solid rgba(13, 110, 253, 0.08);
+    box-shadow: 0 18px 40px rgba(12, 37, 67, 0.06);
+}
+
+.driver-page .card-header {
+    background: #f7fbff;
+    border-bottom: 1px solid rgba(13, 110, 253, 0.08);
+}
+
+.driver-map-box {
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid rgba(13, 110, 253, 0.08);
+}
+
+.driver-map-frame {
+    width: 100%;
+    height: 360px;
+    border: 0;
+    display: block;
+}
+
+.driver-route-banner {
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.04));
+    border: 1px solid rgba(13, 110, 253, 0.14);
+    color: #173a63;
+}
+
+.driver-news-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.driver-news-item {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(13, 110, 253, 0.08);
+}
+
+.driver-news-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.driver-news-date {
+    display: inline-flex;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(13, 110, 253, 0.08);
+    color: var(--uac-blue);
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.driver-news-item h6 {
+    margin-bottom: 0.45rem;
+}
+
+.driver-news-item p {
+    color: #66778b;
+    margin-bottom: 0.45rem;
+}
+
+.driver-news-item a {
+    color: var(--uac-blue);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .driver-page .page-header {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 1.2rem;
+    }
+
+    .driver-map-frame {
+        height: 280px;
+    }
+}
+</style>
+{% endblock %}

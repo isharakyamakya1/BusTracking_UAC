@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Gestion des Comptes - Admin{% endblock %}
+{% block content %}
+<div class="admin-page">
+    <div class="page-header mb-4">
+        <h1>Gestion des Comptes</h1>
+        <p class="text-muted">Creer et gerer les utilisateurs du systeme pour les etudiants, chauffeurs et administrateurs.</p>
+    </div>
+
+    <div class="admin-form-section">
+        <div class="card shadow-sm p-4 mb-4">
+            <form method="POST" class="row g-3" data-validate>
+                <div class="col-md-4">
+                    <input type="text" name="nom" class="form-control" placeholder="Nom complet" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="email" class="form-control" placeholder="Email ou matricule" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="password" name="password" class="form-control" placeholder="Mot de passe" required>
+                </div>
+                <div class="col-md-2">
+                    <select name="role" class="form-select" required>
+                        <option value="student">Etudiant</option>
+                        <option value="driver">Chauffeur</option>
+                        <option value="admin">Administrateur</option>
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-primary w-100">Ajouter</button>
+                </div>
+            </form>
+        </div>
+
+        <table class="table table-striped bg-white shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Nom</th>
+                    <th>Identifiant</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.nom }}</td>
+                    <td>{{ user.email }}</td>
+                    <td><span class="badge {{ 'bg-info' if user.role == 'student' else 'bg-warning text-dark' if user.role == 'driver' else 'bg-secondary text-white' }}">{{ user.role }}</span></td>
+                    <td>
+                        <a href="/admin/edit_user/{{ user.id }}" class="btn btn-sm btn-outline-primary">Modifier</a>
+                        <a href="/admin/delete_user/{{ user.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Confirmez la suppression?')">Supprimer</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
