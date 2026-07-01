@@ -96,11 +96,11 @@
         {% endif %}
 
         {% if session.get('role') == 'student' %}
+        <a href="/student#suivi"><i class="bi bi-broadcast"></i><span>Suivre le bus</span></a>
         <a href="/student#actualites"><i class="bi bi-newspaper"></i><span>Actualites</span></a>
         <a href="/student#profil"><i class="bi bi-person-vcard"></i><span>Profil</span></a>
         <a href="/student#horaires"><i class="bi bi-calendar-event"></i><span>Horaires</span></a>
         <a href="/student#prix"><i class="bi bi-cash-stack"></i><span>Prix</span></a>
-        <a href="/student#suivi"><i class="bi bi-broadcast"></i><span>Suivre le bus</span></a>
         {% endif %}
     </nav>
 </aside>

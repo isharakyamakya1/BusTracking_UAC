@@ -3,34 +3,47 @@
 {% block title %}Modifier Utilisateur - Admin{% endblock %}
 
 {% block content %}
-
-<section class="content">
-    <div class="card">
-        <h2>Modifier l'utilisateur</h2>
-        <p class="muted">Modifiez les informations de l'utilisateur.</p>
+<div class="admin-page py-4">
+    <div class="page-header mb-4">
+        <h1>Modifier l'utilisateur</h1>
+        <p class="text-muted">Mettez à jour les informations et le rôle de l'utilisateur.</p>
     </div>
 
-    <div class="card">
-        <form method="POST" data-validate>
-            <label for="nom">Nom complet</label>
-            <input id="nom" type="text" name="nom" value="{{ user.nom }}" placeholder="Nom et prénom" required>
-
-            <label for="email">Email ou matricule</label>
-            <input id="email" type="text" name="email" value="{{ user.email }}" placeholder="email@exemple.com ou matricule" required>
-
-            <label for="role">Rôle</label>
-            <select id="role" name="role" required>
-                <option value="student" {{ 'selected' if user.role == 'student' else '' }}>Étudiant</option>
-                <option value="driver" {{ 'selected' if user.role == 'driver' else '' }}>Chauffeur</option>
-                <option value="admin" {{ 'selected' if user.role == 'admin' else '' }}>Administrateur</option>
-            </select>
-
-            <div class="form-actions">
-                <button class="btn btn--primary" type="submit">Enregistrer les modifications</button>
-                <a href="/admin/users" class="btn btn--secondary">Annuler</a>
-            </div>
-        </form>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST" data-validate>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="nom" class="form-label">Nom complet</label>
+                        <input id="nom" type="text" name="nom" value="{{ user.nom }}" class="form-control" placeholder="Nom et prénom" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="email" class="form-label">Email</label>
+                        <input id="email" type="text" name="email" value="{{ user.email }}" class="form-control" placeholder="email@exemple.com" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="matricule" class="form-label">Matricule</label>
+                        <input id="matricule" type="text" name="matricule" value="{{ user.matricule or '' }}" class="form-control" placeholder="Matricule ou identifiant">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="role" class="form-label">Rôle</label>
+                        <select id="role" name="role" class="form-select" required>
+                            <option value="student" {{ 'selected' if user.role == 'student' else '' }}>Étudiant</option>
+                            <option value="driver" {{ 'selected' if user.role == 'driver' else '' }}>Chauffeur</option>
+                            <option value="admin" {{ 'selected' if user.role == 'admin' else '' }}>Administrateur</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="password" class="form-label">Nouveau mot de passe</label>
+                        <input id="password" type="password" name="password" class="form-control" placeholder="Laissez vide pour conserver le mot de passe actuel">
+                    </div>
+                </div>
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-primary" type="submit">Enregistrer les modifications</button>
+                    <a href="/admin/users" class="btn btn-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
     </div>
-</section>
-
+</div>
 {% endblock %}

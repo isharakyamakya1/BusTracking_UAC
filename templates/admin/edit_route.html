@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifier Tarif - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-page py-4">
+    <div class="page-header mb-4">
+        <h1>Modifier un tarif</h1>
+        <p class="text-muted">Ajustez les prix ou le trajet du tarif sélectionné.</p>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Point de départ</label>
+                        <select name="depart_id" class="form-select" required>
+                            <option value="">Sélectionnez...</option>
+                            {% for loc in locations %}
+                            <option value="{{ loc.id }}" {{ 'selected' if loc.id == route.depart_id else '' }}>{{ loc.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Destination</label>
+                        <select name="destination_id" class="form-select" required>
+                            <option value="">Sélectionnez...</option>
+                            {% for loc in locations %}
+                            <option value="{{ loc.id }}" {{ 'selected' if loc.id == route.destination_id else '' }}>{{ loc.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Prix aller (FC)</label>
+                        <input type="number" name="prix_aller" class="form-control" value="{{ route.prix_aller }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Prix retour (FC)</label>
+                        <input type="number" name="prix_retour" class="form-control" value="{{ route.prix_retour }}" required>
+                    </div>
+                </div>
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-primary" type="submit">Enregistrer</button>
+                    <a href="/admin/routes" class="btn btn-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -8,44 +8,44 @@
     </div>
 
     <div class="student-nav mb-4">
-        <a href="#actualites" class="student-nav-link active" data-target="actualites">Actualites</a>
+        <a href="#suivi" class="student-nav-link active" data-target="suivi">Suivre le bus</a>
+        <a href="#actualites" class="student-nav-link" data-target="actualites">Actualites</a>
         <a href="#profil" class="student-nav-link" data-target="profil">Profil</a>
         <a href="#horaires" class="student-nav-link" data-target="horaires">Horaires</a>
         <a href="#prix" class="student-nav-link" data-target="prix">Prix</a>
-        <a href="#suivi" class="student-nav-link" data-target="suivi">Suivre le bus</a>
     </div>
 
-    <section id="actualites" class="section-block is-visible">
+    <section id="actualites" class="section-block">
         <div class="card shadow-sm">
             <div class="card-header bg-light">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
                     <div>
-                        <h5 class="mb-1"><i class="bi bi-newspaper"></i> Actualités du campus</h5>
-                        <p class="text-muted mb-0">Les dernières annonces, événements et informations pour les étudiants.</p>
+                        <h5 class="mb-1"><i class="bi bi-newspaper"></i> Actualites du site</h5>
+                        <p class="text-muted mb-0">Les dernieres annonces, evenements et informations pour les etudiants.</p>
                     </div>
-                    <a href="/news" class="btn btn-outline-primary btn-sm">Voir toutes les actualités</a>
+                    <a href="/news" class="btn btn-outline-primary btn-sm">Voir toutes les actualites</a>
                 </div>
             </div>
             <div class="card-body">
                 {% if news %}
-                <div class="row g-4">
+                <div class="row g-4 student-news-grid">
                     {% for item in news %}
-                    <div class="col-md-6 col-xl-4">
-                        <a href="/news/{{ item.id }}" class="news-card text-decoration-none text-reset">
-                            <div class="position-relative overflow-hidden">
+                    <div class="col-md-6 col-xl-4 student-news-column">
+                        <a href="/news/{{ item.id }}" class="news-card text-decoration-none text-reset h-100">
+                            <div class="news-card-media position-relative overflow-hidden">
                                 {% if item.image_path %}
                                 <img src="{{ url_for('static', filename='uploads/news/' ~ item.image_path) }}" alt="{{ item.titre }}" class="news-image w-100">
                                 {% else %}
                                 <div class="news-image news-image-placeholder d-flex align-items-center justify-content-center w-100">
-                                    <span class="fw-semibold">Actualité UAC</span>
+                                    <span class="fw-semibold">Actualite UAC</span>
                                 </div>
                                 {% endif %}
                                 <div class="news-overlay"></div>
                                 <div class="position-absolute top-0 end-0 m-3 badge bg-white text-dark shadow-sm">{{ item.date[:10] }}</div>
                             </div>
-                            <div class="card-body">
-                                <h6 class="card-title">{{ item.titre }}</h6>
-                                <p class="card-text mb-3">{{ item.contenu[:130] }}{% if item.contenu|length > 130 %}...{% endif %}</p>
+                            <div class="card-body news-card-body">
+                                <h6 class="card-title news-card-title">{{ item.titre }}</h6>
+                                <p class="card-text news-card-text">{{ item.contenu[:130] }}{% if item.contenu|length > 130 %}...{% endif %}</p>
                                 <div class="stats flex-wrap gap-2">
                                     <span class="badge bg-primary-light text-primary"><i class="bi bi-person-circle"></i> {{ item.admin_name or 'UAC' }}</span>
                                     <span class="badge bg-info-light text-info"><i class="bi bi-chat"></i> {{ item.comment_count }}</span>
@@ -58,7 +58,7 @@
                 </div>
                 {% else %}
                 <div class="text-center py-4">
-                    <p class="text-muted">Aucune actualité disponible pour le moment.</p>
+                    <p class="text-muted">Aucune actualite disponible pour le moment.</p>
                 </div>
                 {% endif %}
             </div>
@@ -71,21 +71,51 @@
                 <h5 class="mb-0"><i class="bi bi-person-circle"></i> Mon Profil</h5>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <h6 class="mb-1">Nom</h6>
-                    <p class="text-muted mb-0">{{ user_info.nom if user_info else 'Non renseigne' }}</p>
+                <div class="row gy-4 align-items-center">
+                    <div class="col-md-4 text-center">
+                        {% if user_info and user_info.photo_path %}
+                        <img src="{{ profile_photo_url(user_info.photo_path) }}" alt="Photo de profil" class="profile-avatar rounded-circle shadow-sm mb-3">
+                        {% else %}
+                        <div class="profile-avatar profile-avatar-placeholder rounded-circle mb-3">
+                            <i class="bi bi-person"></i>
+                        </div>
+                        {% endif %}
+                        <p class="small text-muted mb-0">Photo de profil etudiant</p>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <h6 class="mb-1">Nom</h6>
+                            <p class="text-muted mb-0">{{ user_info.nom if user_info else 'Non renseigne' }}</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="mb-1">Email</h6>
+                            <p class="text-muted mb-0">{{ user_info.email if user_info else 'Non renseigne' }}</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="mb-1">Matricule</h6>
+                            <p class="text-muted mb-0">{{ user_info.matricule if user_info else 'Non renseigne' }}</p>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Statut</h6>
+                            <p class="text-success mb-0">Etudiant</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <h6 class="mb-1">Email</h6>
-                    <p class="text-muted mb-0">{{ user_info.email if user_info else 'Non renseigne' }}</p>
-                </div>
-                <div class="mb-3">
-                    <h6 class="mb-1">Matricule</h6>
-                    <p class="text-muted mb-0">{{ user_info.matricule if user_info else 'Non renseigne' }}</p>
-                </div>
-                <div>
-                    <h6 class="mb-1">Statut</h6>
-                    <p class="text-success mb-0">Etudiant</p>
+
+                <form method="POST" action="{{ url_for('student_profile_photo') }}" enctype="multipart/form-data" class="mt-4">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label">Changer la photo de profil</label>
+                            <input type="file" name="photo" accept="image/*" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-outline-primary w-100">Enregistrer la photo</button>
+                        </div>
+                    </div>
+                </form>
+                <div class="small text-muted mt-2">
+                    Formats acceptes: JPG, JPEG, PNG, WEBP.
                 </div>
             </div>
         </div>
@@ -171,7 +201,7 @@
         </div>
     </section>
 
-    <section id="suivi" class="section-block mt-4">
+    <section id="suivi" class="section-block mt-4 is-visible">
         <div class="row gy-4">
             <div class="col-xl-8">
                 <div class="card shadow-sm">
@@ -190,7 +220,7 @@
                                 src="https://maps.google.com/maps?q={{ bus_current.current_lat }},{{ bus_current.current_lon }}&z=15&output=embed">
                             </iframe>
                             <div class="map-overlay-card">
-                                <div class="map-pin">📍</div>
+                                <div class="map-pin"><i class="bi bi-geo-alt-fill"></i></div>
                                 <div class="map-label">Position actuelle du bus</div>
                                 <div class="map-coords">Latitude: {{ bus_current.current_lat }}, Longitude: {{ bus_current.current_lon }}</div>
                             </div>
@@ -282,6 +312,7 @@
     color: var(--uac-blue);
     font-weight: 600;
     text-decoration: none;
+    box-shadow: 0 8px 20px rgba(12, 37, 67, 0.06);
     transition: all 0.25s ease;
 }
 
@@ -317,7 +348,7 @@
 }
 
 .map-pin {
-    font-size: 3rem;
+    font-size: 2.2rem;
 }
 
 .map-frame {
@@ -370,6 +401,22 @@
     border: 1px solid rgba(13, 110, 253, 0.12);
 }
 
+.profile-avatar {
+    width: 132px;
+    height: 132px;
+    object-fit: cover;
+    border: 3px solid rgba(13, 110, 253, 0.16);
+}
+
+.profile-avatar-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.16), rgba(13, 110, 253, 0.08));
+    color: var(--uac-blue);
+    font-size: 2rem;
+}
+
 .student-page .card-header {
     border-bottom: 1px solid rgba(13, 110, 253, 0.1);
 }
@@ -377,6 +424,8 @@
 .student-page .card {
     border-radius: 18px;
     overflow: hidden;
+    border: 1px solid rgba(13, 110, 253, 0.1);
+    box-shadow: 0 12px 30px rgba(12, 37, 67, 0.07);
 }
 
 .student-page .news-item {
@@ -395,6 +444,14 @@
     color: var(--primary-blue);
 }
 
+.student-news-grid > [class*="col-"] {
+    display: flex;
+}
+
+.student-news-column {
+    min-width: 0;
+}
+
 .news-card {
     border: none;
     border-radius: 18px;
@@ -402,8 +459,11 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     background: white;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     color: inherit;
+    box-shadow: 0 14px 34px rgba(12, 37, 67, 0.08);
 }
 
 .news-card:hover {
@@ -411,9 +471,16 @@
     box-shadow: 0 12px 30px rgba(0, 61, 130, 0.25) !important;
 }
 
+.news-card-media {
+    aspect-ratio: 4 / 3;
+    min-height: 220px;
+    flex: 0 0 auto;
+}
+
 .news-image,
 .news-image-placeholder {
-    min-height: 200px;
+    min-height: 100%;
+    height: 100%;
     width: 100%;
     object-fit: cover;
     display: block;
@@ -427,6 +494,33 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 3.5rem 1rem;
+}
+
+.news-card-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1.2rem;
+}
+
+.news-card-title {
+    margin: 0;
+    min-height: 3.1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.news-card-text {
+    margin: 0;
+    flex: 1 1 auto;
+    color: #5f6f82;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .news-card:hover .news-image {
@@ -461,6 +555,7 @@
     gap: 0.5rem;
     align-items: center;
     flex-wrap: wrap;
+    margin-top: auto;
 }
 
 .badge.bg-primary-light {
@@ -490,7 +585,7 @@
     }
 
     .student-nav-link {
-        flex: 1 1 45%;
+        flex: 1 1 48%;
         text-align: center;
     }
 
@@ -503,6 +598,15 @@
         right: 0.75rem;
         bottom: 0.75rem;
     }
+
+    .news-card-media {
+        min-height: 190px;
+    }
+
+    .profile-avatar {
+        width: 110px;
+        height: 110px;
+    }
 }
 </style>
 
@@ -512,12 +616,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const sections = document.querySelectorAll(".section-block");
 
     function showSection(sectionId) {
+        const validSectionIds = Array.from(sections).map((section) => section.id);
+        const resolvedSectionId = validSectionIds.includes(sectionId) ? sectionId : "suivi";
+
         sections.forEach((section) => {
-            section.classList.toggle("is-visible", section.id === sectionId);
+            section.classList.toggle("is-visible", section.id === resolvedSectionId);
         });
 
         navLinks.forEach((link) => {
-            link.classList.toggle("active", link.dataset.target === sectionId);
+            link.classList.toggle("active", link.dataset.target === resolvedSectionId);
         });
     }
 
@@ -530,16 +637,18 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     if (!window.location.hash) {
-        history.replaceState(null, "", "#actualites");
+        history.replaceState(null, "", "#suivi");
     }
 
-    const initialSection = window.location.hash ? window.location.hash.replace("#", "") : "actualites";
-    showSection(initialSection || "actualites");
+    const initialSection = window.location.hash ? window.location.hash.replace("#", "") : "suivi";
+    showSection(initialSection || "suivi");
 
     window.addEventListener("hashchange", function () {
-        const sectionId = window.location.hash ? window.location.hash.replace("#", "") : "actualites";
-        showSection(sectionId || "actualites");
+        const sectionId = window.location.hash ? window.location.hash.replace("#", "") : "suivi";
+        showSection(sectionId || "suivi");
     });
 });
 </script>
 {% endblock %}
+
+{% block footer %}{% endblock %}

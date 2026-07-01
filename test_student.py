@@ -1,18 +1,24 @@
 from app import app
 
-print('Testing student dashboard...')
 client = app.test_client()
 
-# Test without login (should redirect)
-rv = client.get('/student')
-print('Status:', rv.status_code)
-if rv.status_code == 302:
-    print('Redirect to:', rv.headers.get('Location'))
+print("Testing student dashboard...")
 
-# Test with student login
-rv2 = client.post('/login', data={'email': 'student@example.com', 'password': 'uac2026'}, follow_redirects=True)
-print('Login status:', rv2.status_code)
-if b'student' in rv2.data.lower():
-    print('Student dashboard loaded successfully')
-else:
-    print('Student dashboard failed to load')
+rv = client.get("/student", follow_redirects=False)
+assert rv.status_code == 302, f"Expected redirect for anonymous user, got {rv.status_code}"
+assert rv.headers.get("Location", "").endswith("/login"), rv.headers.get("Location")
+
+login = client.post(
+    "/login",
+    data={"email": "POLY163/2022", "password": "uac2026"},
+    follow_redirects=False,
+)
+assert login.status_code == 302, f"Expected successful login redirect, got {login.status_code}"
+assert login.headers.get("Location", "").endswith("/student"), login.headers.get("Location")
+
+dashboard = client.get("/student")
+assert dashboard.status_code == 200, f"Expected student dashboard, got {dashboard.status_code}"
+assert b"Tableau de Bord Etudiant" in dashboard.data
+assert b"Suivre le bus" in dashboard.data
+
+print("Student dashboard smoke test passed.")

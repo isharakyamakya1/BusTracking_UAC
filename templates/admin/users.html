@@ -45,7 +45,7 @@
                 {% for user in users %}
                 <tr>
                     <td>{{ user.nom }}</td>
-                    <td>{{ user.email }}</td>
+                    <td>{{ user.matricule or user.email }}</td>
                     <td><span class="badge {{ 'bg-info' if user.role == 'student' else 'bg-warning text-dark' if user.role == 'driver' else 'bg-secondary text-white' }}">{{ user.role }}</span></td>
                     <td>
                         <a href="/admin/edit_user/{{ user.id }}" class="btn btn-sm btn-outline-primary">Modifier</a>

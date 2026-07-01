@@ -82,6 +82,46 @@ function setupFormValidation() {
     });
 }
 
+function setupBusMap() {
+    const mapContainer = document.getElementById("bus-map");
+    if (!mapContainer || typeof L === "undefined") return;
+
+    const map = L.map(mapContainer, { zoomControl: false }).setView([0, 0], 2);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    let marker = null;
+
+    async function refreshBusLocations() {
+        try {
+            const response = await fetch("/api/buses/locations");
+            if (!response.ok) return;
+            const locations = await response.json();
+            if (!Array.isArray(locations) || !locations.length) return;
+
+            const latest = locations[0];
+            const lat = parseFloat(latest.current_lat);
+            const lon = parseFloat(latest.current_lon);
+            if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+
+            if (!marker) {
+                marker = L.marker([lat, lon]).addTo(map);
+            } else {
+                marker.setLatLng([lat, lon]);
+            }
+            marker.bindPopup(`<strong>${latest.plaque}</strong><br>${latest.dernier_arret || 'Position actuelle'}`).openPopup();
+            map.setView([lat, lon], 13);
+        } catch (error) {
+            console.warn("Impossible de charger les positions des bus", error);
+        }
+    }
+
+    refreshBusLocations();
+    window.setInterval(refreshBusLocations, 15000);
+}
+
 function updateSidebarActiveLink() {
     const currentPath = window.location.pathname.replace(/\/$/, "");
     const currentHash = window.location.hash || "";
@@ -123,6 +163,7 @@ function init() {
 
     setupPasswordToggles();
     setupFormValidation();
+    setupBusMap();
     updateSidebarActiveLink();
     setupSidebarLinks();
 

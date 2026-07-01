@@ -74,7 +74,11 @@
                             {% for comment in comments %}
                             <div class="comment-bubble">
                                 <div class="comment-avatar">
+                                    {% if comment.user_photo_path %}
+                                    <img src="{{ profile_photo_url(comment.user_photo_path) }}" alt="Avatar" class="comment-avatar-img rounded-circle">
+                                    {% else %}
                                     <i class="fas fa-user"></i>
+                                    {% endif %}
                                 </div>
                                 <div class="comment-content">
                                     <div class="comment-meta">

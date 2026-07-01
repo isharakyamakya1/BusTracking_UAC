@@ -68,6 +68,7 @@
                                     <th>Aller</th>
                                     <th>Retour</th>
                                     <th>Total</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -77,6 +78,10 @@
                                     <td>{{ route.prix_aller }} FC</td>
                                     <td>{{ route.prix_retour }} FC</td>
                                     <td><span class="badge bg-secondary">{{ route.prix_aller + route.prix_retour }} FC</span></td>
+                                    <td>
+                                        <a href="/admin/edit_route/{{ route.id }}" class="btn btn-sm btn-outline-primary me-2">Modifier</a>
+                                        <a href="/admin/delete_route/{{ route.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Confirmez la suppression ?')">Supprimer</a>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

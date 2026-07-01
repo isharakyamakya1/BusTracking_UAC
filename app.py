@@ -9,11 +9,15 @@ app = Flask(__name__)
 app.secret_key = "secret_key_transport_uac"
 
 DATABASE = "database.db"
-UPLOAD_FOLDER = os.path.join("static", "uploads", "news")
+NEWS_UPLOAD_FOLDER = os.path.join("static", "uploads", "news")
+PROFILE_UPLOAD_FOLDER = os.path.join("static", "uploads", "profiles")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["UPLOAD_FOLDER"] = NEWS_UPLOAD_FOLDER
+app.config["NEWS_UPLOAD_FOLDER"] = NEWS_UPLOAD_FOLDER
+app.config["PROFILE_UPLOAD_FOLDER"] = PROFILE_UPLOAD_FOLDER
 
-os.makedirs(os.path.join(app.root_path, UPLOAD_FOLDER), exist_ok=True)
+os.makedirs(os.path.join(app.root_path, NEWS_UPLOAD_FOLDER), exist_ok=True)
+os.makedirs(os.path.join(app.root_path, PROFILE_UPLOAD_FOLDER), exist_ok=True)
 
 # =============================
 # CONNEXION À LA BASE DE DONNÉES
@@ -28,10 +32,12 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def save_uploaded_image(file):
+def save_uploaded_image(file, upload_folder=None):
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        upload_dir = os.path.join(app.root_path, app.config["UPLOAD_FOLDER"])
+        target_folder = upload_folder or app.config["NEWS_UPLOAD_FOLDER"]
+        upload_dir = os.path.join(app.root_path, target_folder)
+        os.makedirs(upload_dir, exist_ok=True)
         filepath = os.path.join(upload_dir, filename)
         base, ext = os.path.splitext(filename)
         counter = 1
@@ -42,6 +48,96 @@ def save_uploaded_image(file):
         file.save(filepath)
         return filename
     return None
+
+
+def delete_uploaded_image(filename, upload_folder):
+    if not filename:
+        return
+
+    upload_dir = os.path.abspath(os.path.join(app.root_path, upload_folder))
+    filepath = os.path.abspath(os.path.join(upload_dir, filename))
+
+    if os.path.commonpath([upload_dir, filepath]) != upload_dir:
+        return
+
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+
+def get_user_initials(name):
+    tokens = [token for token in (name or "").replace("-", " ").split() if token]
+    if not tokens:
+        return "U"
+    if len(tokens) == 1:
+        return tokens[0][:2].upper()
+    return f"{tokens[0][0]}{tokens[1][0]}".upper()
+
+
+def profile_photo_url(photo_path):
+    if not photo_path:
+        return None
+    return url_for("static", filename=f"uploads/profiles/{photo_path}")
+
+
+def normalize_login_identifier(identifier):
+    if not identifier:
+        return None
+    identifier = identifier.strip()
+    return identifier or None
+
+
+def get_user_by_identifier(identifier):
+    identifier = normalize_login_identifier(identifier)
+    if not identifier:
+        return None
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT * FROM users WHERE email = ? OR matricule = ?",
+        (identifier, identifier)
+    ).fetchone()
+    conn.close()
+    return user
+
+
+def get_current_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    return user
+
+
+@app.context_processor
+def inject_current_user():
+    return {
+        "current_user": get_current_user(),
+        "profile_photo_url": profile_photo_url,
+        "user_initials": get_user_initials,
+    }
+
+
+def get_route_summary(conn, route_id):
+    return conn.execute("""
+        SELECT r.id, l1.nom AS depart, l2.nom AS destination
+        FROM routes r
+        LEFT JOIN locations l1 ON r.depart_id = l1.id
+        LEFT JOIN locations l2 ON r.destination_id = l2.id
+        WHERE r.id = ?
+    """, (route_id,)).fetchone()
+
+
+def format_route_destination(route):
+    if not route:
+        return "Trajet programme"
+
+    route_parts = [part for part in [route["depart"], route["destination"]] if part]
+    if route_parts:
+        return " -> ".join(route_parts)
+    return "Trajet programme"
 
 # =============================
 # INITIALISATION DE LA BASE
@@ -114,13 +210,28 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         bus_id INTEGER,
         driver_id INTEGER,
+        route_id INTEGER,
         date TEXT,
         heure_depart TEXT,
+        heure_arrivee TEXT,
+        statut TEXT DEFAULT 'planifie',
         statut_travail TEXT DEFAULT 'OUI',
         FOREIGN KEY(bus_id) REFERENCES buses(id),
-        FOREIGN KEY(driver_id) REFERENCES users(id)
+        FOREIGN KEY(driver_id) REFERENCES users(id),
+        FOREIGN KEY(route_id) REFERENCES routes(id)
     )
     """)
+
+    cursor.execute("PRAGMA table_info(assignments)")
+    assignments_columns = [row[1] for row in cursor.fetchall()]
+    if "route_id" not in assignments_columns:
+        cursor.execute("ALTER TABLE assignments ADD COLUMN route_id INTEGER")
+    if "heure_arrivee" not in assignments_columns:
+        cursor.execute("ALTER TABLE assignments ADD COLUMN heure_arrivee TEXT")
+    if "statut" not in assignments_columns:
+        cursor.execute("ALTER TABLE assignments ADD COLUMN statut TEXT DEFAULT 'planifie'")
+    if "statut_travail" not in assignments_columns:
+        cursor.execute("ALTER TABLE assignments ADD COLUMN statut_travail TEXT DEFAULT 'OUI'")
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS schedules (
@@ -156,6 +267,11 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN telephone TEXT")
     if "permis" not in users_columns:
         cursor.execute("ALTER TABLE users ADD COLUMN permis TEXT")
+    if "photo_path" not in users_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN photo_path TEXT")
+    if "matricule" not in users_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN matricule TEXT")
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_matricule ON users(matricule)")
 
     cursor.execute("PRAGMA table_info(news)")
     news_columns = [row[1] for row in cursor.fetchall()]
@@ -200,9 +316,13 @@ def init_db():
     # --- INSERTIONS PAR DÉFAUT ---
     # Insertion de l'admin par défaut (user: admin / pass: uac2026)
     hashed_pw = generate_password_hash("uac2026")
-    cursor.execute("INSERT OR IGNORE INTO users (nom, email, password, role) VALUES (?, ?, ?, ?)",
-                   ("Admin UAC", "admin", hashed_pw, "admin"))
-    cursor.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, "admin"))
+    cursor.execute("INSERT OR IGNORE INTO users (nom, email, password, role, matricule) VALUES (?, ?, ?, ?, ?)",
+                   ("Admin UAC", "admin", hashed_pw, "admin", "admin"))
+    cursor.execute("UPDATE users SET password = ?, matricule = ? WHERE email = ?", (hashed_pw, "admin", "admin"))
+
+    # Insertion d'un compte étudiant de demonstration
+    cursor.execute("INSERT OR IGNORE INTO users (nom, email, password, role, matricule) VALUES (?, ?, ?, ?, ?)",
+                   ("Etudiant Test", "POLY163/2022", hashed_pw, "student", "POLY163/2022"))
 
     # Insertion des lieux stratégiques
     lieux = [
@@ -241,12 +361,10 @@ def index():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form.get("email")
+        identifier = normalize_login_identifier(request.form.get("email"))
         password = request.form.get("password")
-        
-        conn = get_db()
-        user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-        conn.close()
+
+        user = get_user_by_identifier(identifier)
 
         if user and check_password_hash(user["password"], password):
             session["user_id"] = user["id"]
@@ -262,6 +380,11 @@ def login():
         
         return "Identifiants incorrects", 401
     return render_template("login.html")
+
+@app.route("/register")
+@app.route("/register.html")
+def register_info():
+    return render_template("register.html")
 
 @app.route("/logout")
 def logout():
@@ -322,20 +445,12 @@ def driver_dashboard():
     current_trip = driver_schedules[0] if driver_schedules else None
 
     current_bus = None
-    if current_trip and current_trip["plaque"]:
+    if current_trip and current_trip["bus_id"]:
         current_bus = conn.execute("""
             SELECT id, plaque, capacite, statut, current_lat, current_lon, dernier_arret
             FROM buses
             WHERE id = ?
         """, (current_trip["bus_id"],)).fetchone()
-
-    recent_news = conn.execute("""
-        SELECT n.*, u.nom AS admin_name
-        FROM news n
-        LEFT JOIN users u ON n.admin_id = u.id
-        ORDER BY n.date DESC
-        LIMIT 3
-    """).fetchall()
 
     conn.close()
 
@@ -345,7 +460,6 @@ def driver_dashboard():
         driver_schedules=driver_schedules,
         current_trip=current_trip,
         current_bus=current_bus,
-        recent_news=recent_news,
     )
 
 @app.route("/driver/update-location", methods=["POST"])
@@ -354,11 +468,20 @@ def driver_update_location():
         return redirect(url_for("login"))
 
     user_id = session.get("user_id")
-    latitude = request.form.get("current_lat")
-    longitude = request.form.get("current_lon")
-    dernier_arret = request.form.get("dernier_arret")
+    latitude_raw = (request.form.get("current_lat") or "").strip()
+    longitude_raw = (request.form.get("current_lon") or "").strip()
+    dernier_arret = (request.form.get("dernier_arret") or "").strip()
 
-    if not latitude or not longitude:
+    if not latitude_raw or not longitude_raw:
+        return redirect(url_for("driver_dashboard"))
+
+    try:
+        latitude = float(latitude_raw)
+        longitude = float(longitude_raw)
+    except ValueError:
+        return redirect(url_for("driver_dashboard"))
+
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
         return redirect(url_for("driver_dashboard"))
 
     conn = get_db()
@@ -375,11 +498,89 @@ def driver_update_location():
             UPDATE buses
             SET current_lat = ?, current_lon = ?, dernier_arret = ?
             WHERE id = ?
-        """, (latitude, longitude, dernier_arret, assigned_bus["bus_id"]))
+        """, (latitude, longitude, dernier_arret or None, assigned_bus["bus_id"]))
         conn.commit()
 
     conn.close()
     return redirect(url_for("driver_dashboard"))
+
+@app.route("/api/update-location", methods=["POST"])
+def api_update_location():
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form.to_dict()
+
+    bus_id = data.get("bus_id") or data.get("id")
+    plaque = data.get("plaque")
+    latitude = data.get("latitude") or data.get("lat")
+    longitude = data.get("longitude") or data.get("lon") or data.get("lng")
+    dernier_arret = data.get("dernier_arret") or data.get("last_stop") or data.get("stop_name")
+
+    if latitude is None or longitude is None:
+        return jsonify({"error": "latitude et longitude sont requis"}), 400
+
+    try:
+        latitude = float(latitude)
+        longitude = float(longitude)
+    except (ValueError, TypeError):
+        return jsonify({"error": "latitude ou longitude invalides"}), 400
+
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return jsonify({"error": "coordonnees hors limites"}), 400
+
+    conn = get_db()
+    bus = None
+    if bus_id:
+        bus = conn.execute("SELECT * FROM buses WHERE id = ?", (bus_id,)).fetchone()
+    elif plaque:
+        bus = conn.execute("SELECT * FROM buses WHERE plaque = ?", (plaque,)).fetchone()
+
+    if not bus:
+        conn.close()
+        return jsonify({"error": "bus introuvable. bus_id ou plaque requis"}), 404
+
+    conn.execute(
+        "UPDATE buses SET current_lat = ?, current_lon = ?, dernier_arret = ? WHERE id = ?",
+        (latitude, longitude, dernier_arret or None, bus["id"])
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "status": "ok",
+        "bus_id": bus["id"],
+        "plaque": bus["plaque"],
+        "current_lat": latitude,
+        "current_lon": longitude,
+        "dernier_arret": dernier_arret
+    }), 200
+
+@app.route("/api/buses/locations")
+def api_get_bus_locations():
+    conn = get_db()
+    buses = conn.execute(
+        "SELECT id, plaque, current_lat, current_lon, dernier_arret FROM buses WHERE current_lat IS NOT NULL AND current_lon IS NOT NULL"
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(bus) for bus in buses])
+
+@app.route("/api/supported-modules")
+def api_supported_modules():
+    return jsonify({
+        "supported_devices": [
+            "ESP32 + SIM800L",
+            "ESP32 + SIM900",
+            "ESP32 + SIM808",
+            "ESP32 + SIM7000",
+            "A9G",
+            "NEO-6M",
+            "NEO-M8N",
+            "UBLOX GPS modules",
+            "GY-NEO6MV2"
+        ],
+        "notes": "Cette API accepte tout module capable d'envoyer une requete HTTP POST avec latitude/longitude et un identifiant de bus."
+    })
 
 @app.route("/student")
 def student_dashboard():
@@ -433,6 +634,34 @@ def student_dashboard():
     user_info = None
     if user_id:
         user_info = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+    bus_status_message = None
+    if bus_current:
+        last_stop = bus_current["dernier_arret"] or "un point de passage"
+        next_destination = schedules[0]["destination"].strip() if schedules and schedules[0]["destination"] else None
+
+        if next_destination:
+            if last_stop.strip().lower() == next_destination.strip().lower():
+                bus_status_message = (
+                    f"Le bus est déjà à {next_destination}. "
+                    "Il a atteint sa destination."
+                )
+            else:
+                next_schedule = schedules[0]
+                if next_schedule["date"] and next_schedule["heure_depart"]:
+                    bus_status_message = (
+                        f"Le bus est encore à {last_stop}. Il part bientôt vers {next_destination} le {next_schedule['date']} à {next_schedule['heure_depart']}. "
+                        "Si vous n'êtes pas encore à l'arrêt, vous risquez d'être en retard."
+                    )
+                else:
+                    bus_status_message = (
+                        f"Le bus est encore à {last_stop}. Il part bientôt vers {next_destination}. "
+                        "Si vous n'êtes pas encore à l'arrêt, vous risquez d'être en retard."
+                    )
+        else:
+            bus_status_message = (
+                f"Le bus est actuellement à {last_stop}. Les mises à jour de sa destination arrivent bientôt."
+            )
     
     conn.close()
     
@@ -441,14 +670,52 @@ def student_dashboard():
                          schedules=schedules, 
                          routes=routes,
                          bus_current=bus_current,
-                         user_info=user_info)
+                         user_info=user_info,
+                         bus_status_message=bus_status_message)
+
+
+@app.route("/student/profile-photo", methods=["POST"])
+def student_profile_photo():
+    if session.get("role") != "student":
+        return redirect(url_for("login"))
+
+    image = request.files.get("photo")
+    if not image or not image.filename:
+        return redirect(url_for("student_dashboard") + "#profil")
+
+    image_name = save_uploaded_image(image, app.config["PROFILE_UPLOAD_FOLDER"])
+    if not image_name:
+        return "Format de photo non pris en charge", 400
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT photo_path FROM users WHERE id = ? AND role = 'student'",
+        (session.get("user_id"),)
+    ).fetchone()
+
+    if not user:
+        conn.close()
+        return redirect(url_for("login"))
+
+    previous_photo = user["photo_path"]
+    conn.execute(
+        "UPDATE users SET photo_path = ? WHERE id = ?",
+        (image_name, session.get("user_id"))
+    )
+    conn.commit()
+    conn.close()
+
+    if previous_photo and previous_photo != image_name:
+        delete_uploaded_image(previous_photo, app.config["PROFILE_UPLOAD_FOLDER"])
+
+    return redirect(url_for("student_dashboard") + "#profil")
 
 @app.route("/api/comments/<int:news_id>")
 def api_comments(news_id):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT c.id, c.contenu, c.date, u.nom as user_name
+    SELECT c.id, c.contenu, c.date, u.nom as user_name, u.photo_path as user_photo_path
     FROM news_comments c
     LEFT JOIN users u ON c.user_id = u.id
     WHERE c.news_id = ?
@@ -543,15 +810,15 @@ def admin_add_driver():
     nom = request.form.get("nom")
     telephone = request.form.get("telephone")
     permis = request.form.get("permis")
-    email = request.form.get("email") or f"driver_{int(datetime.now().timestamp())}@uac"
+    identifier = (request.form.get("email") or f"driver_{int(datetime.now().timestamp())}@uac").strip()
     raw_password = request.form.get("password")
-    if not nom or not telephone or not permis or not email or not raw_password:
+    if not nom or not telephone or not permis or not identifier or not raw_password:
         return "Tous les champs sont requis", 400
     password = generate_password_hash(raw_password)
     conn = get_db()
     try:
-        conn.execute("INSERT INTO users (nom, email, password, role, telephone, permis) VALUES (?, ?, ?, ?, ?, ?)",
-                     (nom, email, password, "driver", telephone, permis))
+        conn.execute("INSERT INTO users (nom, email, matricule, password, role, telephone, permis) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                     (nom, identifier, identifier, password, "driver", telephone, permis))
         conn.commit()
     except sqlite3.IntegrityError:
         conn.close()
@@ -601,15 +868,16 @@ def admin_edit_user(user_id):
     if request.method == "POST":
         nom = request.form.get("nom")
         email = request.form.get("email")
+        matricule = (request.form.get("matricule") or email).strip()
         role = request.form.get("role")
         raw_password = request.form.get("password")
         if raw_password:
             hashed_password = generate_password_hash(raw_password)
-            conn.execute("UPDATE users SET nom = ?, email = ?, role = ?, password = ? WHERE id = ?",
-                         (nom, email, role, hashed_password, user_id))
+            conn.execute("UPDATE users SET nom = ?, email = ?, matricule = ?, role = ?, password = ? WHERE id = ?",
+                         (nom, email, matricule, role, hashed_password, user_id))
         else:
-            conn.execute("UPDATE users SET nom = ?, email = ?, role = ? WHERE id = ?",
-                         (nom, email, role, user_id))
+            conn.execute("UPDATE users SET nom = ?, email = ?, matricule = ?, role = ? WHERE id = ?",
+                         (nom, email, matricule, role, user_id))
         conn.commit()
         conn.close()
         return redirect(url_for("admin_users"))
@@ -644,9 +912,57 @@ def admin_schedules():
         conn.commit()
     buses = conn.execute("SELECT * FROM buses WHERE statut = 'actif'").fetchall()
     drivers = conn.execute("SELECT * FROM users WHERE role = 'driver'").fetchall()
+    routes = conn.execute("""
+        SELECT r.id, l1.nom AS depart, l2.nom AS destination, r.prix_aller, r.prix_retour
+        FROM routes r
+        LEFT JOIN locations l1 ON r.depart_id = l1.id
+        LEFT JOIN locations l2 ON r.destination_id = l2.id
+        ORDER BY l1.nom, l2.nom
+    """).fetchall()
     schedules = conn.execute("SELECT s.*, b.plaque, u.nom AS driver_name FROM schedules s LEFT JOIN buses b ON s.bus_id = b.id LEFT JOIN users u ON s.driver_id = u.id ORDER BY s.date DESC, s.heure_depart ASC").fetchall()
     conn.close()
     return render_template("admin/schedules.html", buses=buses, drivers=drivers, schedules=schedules)
+
+@app.route("/admin/edit_schedule/<int:schedule_id>", methods=["GET", "POST"])
+def admin_edit_schedule(schedule_id):
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    if request.method == "POST":
+        bus_id = request.form.get("bus_id")
+        driver_id = request.form.get("driver_id")
+        destination = request.form.get("destination")
+        date_trajet = request.form.get("date")
+        heure_depart = request.form.get("heure_depart")
+        disponible = request.form.get("disponible", "oui")
+        conn.execute(
+            "UPDATE schedules SET bus_id = ?, driver_id = ?, destination = ?, date = ?, heure_depart = ?, disponible = ? WHERE id = ?",
+            (bus_id, driver_id, destination, date_trajet, heure_depart, disponible, schedule_id)
+        )
+        conn.commit()
+        conn.close()
+        return redirect(url_for("admin_schedules"))
+
+    schedule = conn.execute("SELECT * FROM schedules WHERE id = ?", (schedule_id,)).fetchone()
+    if not schedule:
+        conn.close()
+        return redirect(url_for("admin_schedules"))
+
+    buses = conn.execute("SELECT * FROM buses WHERE statut = 'actif'").fetchall()
+    drivers = conn.execute("SELECT * FROM users WHERE role = 'driver'").fetchall()
+    conn.close()
+    return render_template("admin/edit_schedule.html", schedule=schedule, buses=buses, drivers=drivers)
+
+@app.route("/admin/delete_schedule/<int:schedule_id>")
+def admin_delete_schedule(schedule_id):
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+    conn = get_db()
+    conn.execute("DELETE FROM schedules WHERE id = ?", (schedule_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin_schedules"))
 
 @app.route("/admin/locations", methods=["GET", "POST"])
 def admin_locations():
@@ -721,9 +1037,13 @@ def admin_edit_news(news_id):
         contenu = request.form.get("contenu")
         image = request.files.get("image")
         image_name = save_uploaded_image(image) if image else None
+        news_item = conn.execute("SELECT * FROM news WHERE id = ?", (news_id,)).fetchone()
         if image_name:
+            previous_image = news_item["image_path"] if news_item else None
             conn.execute("UPDATE news SET titre = ?, contenu = ?, image_path = ? WHERE id = ?",
                          (titre, contenu, image_name, news_id))
+            if previous_image:
+                delete_uploaded_image(previous_image, app.config["NEWS_UPLOAD_FOLDER"])
         else:
             conn.execute("UPDATE news SET titre = ?, contenu = ? WHERE id = ?",
                          (titre, contenu, news_id))
@@ -739,6 +1059,9 @@ def admin_delete_news(news_id):
     if session.get("role") != "admin":
         return redirect(url_for("login"))
     conn = get_db()
+    news_item = conn.execute("SELECT image_path FROM news WHERE id = ?", (news_id,)).fetchone()
+    if news_item and news_item["image_path"]:
+        delete_uploaded_image(news_item["image_path"], app.config["NEWS_UPLOAD_FOLDER"])
     conn.execute("DELETE FROM news WHERE id = ?", (news_id,))
     conn.commit()
     conn.close()
@@ -748,7 +1071,7 @@ def admin_delete_news(news_id):
 def news_detail(news_id):
     conn = get_db()
     news_item = conn.execute("SELECT n.*, u.nom as admin_name FROM news n LEFT JOIN users u ON n.admin_id = u.id WHERE n.id = ?", (news_id,)).fetchone()
-    comments = conn.execute("SELECT c.*, u.nom as user_name FROM news_comments c LEFT JOIN users u ON c.user_id = u.id WHERE c.news_id = ? ORDER BY c.date DESC", (news_id,)).fetchall()
+    comments = conn.execute("SELECT c.*, u.nom as user_name, u.photo_path as user_photo_path FROM news_comments c LEFT JOIN users u ON c.user_id = u.id WHERE c.news_id = ? ORDER BY c.date DESC", (news_id,)).fetchall()
     like_count = conn.execute("SELECT COUNT(*) FROM news_likes WHERE news_id = ?", (news_id,)).fetchone()[0]
     user_liked = False
     if session.get("user_id"):
@@ -815,6 +1138,42 @@ def admin_routes():
     conn.close()
     return render_template("admin/routes.html", routes=routes, locations=locations)
 
+@app.route("/admin/edit_route/<int:route_id>", methods=["GET", "POST"])
+def admin_edit_route(route_id):
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    if request.method == "POST":
+        depart_id = request.form.get("depart_id")
+        destination_id = request.form.get("destination_id")
+        prix_aller = request.form.get("prix_aller")
+        prix_retour = request.form.get("prix_retour")
+        conn.execute(
+            "UPDATE routes SET depart_id = ?, destination_id = ?, prix_aller = ?, prix_retour = ? WHERE id = ?",
+            (depart_id, destination_id, prix_aller, prix_retour, route_id)
+        )
+        conn.commit()
+        conn.close()
+        return redirect(url_for("admin_routes"))
+
+    route = conn.execute("SELECT * FROM routes WHERE id = ?", (route_id,)).fetchone()
+    locations = conn.execute("SELECT * FROM locations").fetchall()
+    conn.close()
+    if not route:
+        return redirect(url_for("admin_routes"))
+    return render_template("admin/edit_route.html", route=route, locations=locations)
+
+@app.route("/admin/delete_route/<int:route_id>")
+def admin_delete_route(route_id):
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+    conn = get_db()
+    conn.execute("DELETE FROM routes WHERE id = ?", (route_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin_routes"))
+
 # --- GESTION DES UTILISATEURS ---
 @app.route("/admin/users", methods=["GET", "POST"])
 def admin_users():
@@ -826,18 +1185,19 @@ def admin_users():
         nom = request.form.get("nom")
         email = request.form.get("email")
         role = request.form.get("role")
-        # Mot de passe par défaut : uac2026
         raw_password = request.form.get("password")
         if not nom or not email or not role or not raw_password:
             conn.close()
             return "Tous les champs sont requis", 400
         password = generate_password_hash(raw_password)
+        matricule = email.strip()
         
         try:
-            conn.execute("INSERT INTO users (nom, email, password, role) VALUES (?, ?, ?, ?)",
-                         (nom, email, password, role))
+            conn.execute("INSERT INTO users (nom, email, matricule, password, role) VALUES (?, ?, ?, ?, ?)",
+                         (nom, email, matricule, password, role))
             conn.commit()
         except sqlite3.IntegrityError:
+            conn.close()
             return "Cet email ou matricule existe déjà", 400
             
     users = conn.execute("SELECT * FROM users ORDER BY role").fetchall()
@@ -855,16 +1215,18 @@ def admin_students():
         email = request.form.get("email")
         password = request.form.get("password")
         if not nom or not email or not password:
+            conn.close()
             return "Tous les champs sont requis", 400
         hashed_password = generate_password_hash(password)
+        matricule = email.strip()
         try:
-            conn.execute("INSERT INTO users (nom, email, password, role) VALUES (?, ?, ?, ?)",
-                         (nom, email, hashed_password, "student"))
+            conn.execute("INSERT INTO users (nom, email, matricule, password, role) VALUES (?, ?, ?, ?, ?)",
+                         (nom, email, matricule, hashed_password, "student"))
             conn.commit()
         except sqlite3.IntegrityError:
             conn.close()
             return "Cet email ou matricule existe déjà", 400
-    students = conn.execute("SELECT id, nom, email FROM users WHERE role = 'student' ORDER BY nom").fetchall()
+    students = conn.execute("SELECT id, nom, matricule, email FROM users WHERE role = 'student' ORDER BY nom").fetchall()
     conn.close()
     return render_template("admin/students.html", students=students)
 
@@ -876,32 +1238,140 @@ def admin_assignments():
     
     conn = get_db()
     if request.method == "POST":
-        bus_id = request.form.get("bus_id")
-        driver_id = request.form.get("driver_id")
-        date_trajet = request.form.get("date")
-        heure = request.form.get("heure_depart")
-        
-        conn.execute("""
-            INSERT INTO assignments (bus_id, driver_id, date, heure_depart) 
-            VALUES (?, ?, ?, ?)
-        """, (bus_id, driver_id, date_trajet, heure))
-        conn.commit()
+        bus_id = (request.form.get("bus_id") or "").strip()
+        driver_id = (request.form.get("driver_id") or "").strip()
+        route_id = (request.form.get("route_id") or "").strip()
+        date_trajet = (request.form.get("date") or "").strip()
+        heure_depart = (request.form.get("heure_depart") or "").strip()
+        heure_arrivee = (request.form.get("heure_arrivee") or "").strip()
+
+        if bus_id and driver_id and route_id and date_trajet and heure_depart:
+            route = get_route_summary(conn, route_id)
+            destination_label = format_route_destination(route)
+            status = "planifie"
+
+            existing_assignment = conn.execute("""
+                SELECT id
+                FROM assignments
+                WHERE bus_id = ?
+                  AND driver_id = ?
+                  AND route_id = ?
+                  AND date = ?
+                  AND heure_depart = ?
+            """, (bus_id, driver_id, route_id, date_trajet, heure_depart)).fetchone()
+
+            if not existing_assignment and route:
+                conn.execute("""
+                    INSERT INTO assignments (
+                        bus_id,
+                        driver_id,
+                        route_id,
+                        date,
+                        heure_depart,
+                        heure_arrivee,
+                        statut
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    bus_id,
+                    driver_id,
+                    route_id,
+                    date_trajet,
+                    heure_depart,
+                    heure_arrivee or None,
+                    status,
+                ))
+
+            existing_schedule = conn.execute("""
+                SELECT id
+                FROM schedules
+                WHERE bus_id = ?
+                  AND driver_id = ?
+                  AND date = ?
+                  AND heure_depart = ?
+                  AND destination = ?
+            """, (bus_id, driver_id, date_trajet, heure_depart, destination_label)).fetchone()
+
+            if not existing_schedule and route:
+                conn.execute("""
+                    INSERT INTO schedules (
+                        bus_id,
+                        driver_id,
+                        date,
+                        heure_depart,
+                        destination,
+                        disponible
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    bus_id,
+                    driver_id,
+                    date_trajet,
+                    heure_depart,
+                    destination_label,
+                    "oui",
+                ))
+
+            conn.commit()
+
+        conn.close()
+        return redirect(url_for("admin_assignments"))
     
     # Récupérer les données pour les menus déroulants
     buses = conn.execute("SELECT * FROM buses WHERE statut = 'actif'").fetchall()
     drivers = conn.execute("SELECT * FROM users WHERE role = 'driver'").fetchall()
+    routes = conn.execute("""
+        SELECT r.id, l1.nom AS depart, l2.nom AS destination, r.prix_aller, r.prix_retour
+        FROM routes r
+        LEFT JOIN locations l1 ON r.depart_id = l1.id
+        LEFT JOIN locations l2 ON r.destination_id = l2.id
+        ORDER BY l1.nom, l2.nom
+    """).fetchall()
     
     # Liste des affectations avec jointures pour l'affichage
     assignments = conn.execute("""
-        SELECT a.*, b.plaque, u.nom as chauffeur
+        SELECT
+            a.id,
+            a.bus_id,
+            a.driver_id,
+            a.route_id,
+            a.date,
+            a.heure_depart,
+            a.heure_arrivee,
+            COALESCE(a.statut, 'planifie') AS statut,
+            b.plaque,
+            b.capacite,
+            u.nom AS chauffeur,
+            l1.nom AS depart,
+            l2.nom AS destination
         FROM assignments a
         JOIN buses b ON a.bus_id = b.id
         JOIN users u ON a.driver_id = u.id
+        LEFT JOIN routes r ON a.route_id = r.id
+        LEFT JOIN locations l1 ON r.depart_id = l1.id
+        LEFT JOIN locations l2 ON r.destination_id = l2.id
         ORDER BY a.date DESC, a.heure_depart ASC
     """).fetchall()
+
+    today_iso = date.today().isoformat()
+    assignment_stats = {
+        "total": len(assignments),
+        "today": sum(1 for assign in assignments if assign["date"] == today_iso),
+        "active_buses": len(buses),
+        "drivers": len(drivers),
+        "routes": len(routes),
+    }
     
     conn.close()
-    return render_template("admin/assignments.html", buses=buses, drivers=drivers, assignments=assignments)
+    return render_template(
+        "admin/assignments.html",
+        buses=buses,
+        drivers=drivers,
+        routes=routes,
+        assignments=assignments,
+        assignment_stats=assignment_stats,
+        today_iso=today_iso,
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)

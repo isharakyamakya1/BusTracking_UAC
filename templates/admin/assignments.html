@@ -1,131 +1,262 @@
-{% extends 'base.html' %}
-
-{% block title %}Affectations des Bus - Admin{% endblock %}
+{% extends "base.html" %}
+{% block title %}Affectations des bus - Admin{% endblock %}
 
 {% block content %}
-
-<section class="content">
-    <div class="card">
-        <h2>Affectations des Bus</h2>
-        <p class="muted">Assignez les chauffeurs aux bus pour les trajets planifiés.</p>
-    </div>
-
-    <div class="card">
-        <h3>Planifier un trajet</h3>
-        <form method="POST" data-validate>
-            <label for="bus_id">Bus</label>
-            <select id="bus_id" name="bus_id" required>
-                <option value="">Sélectionnez un bus</option>
-                {% for bus in buses %}
-                <option value="{{ bus.id }}">{{ bus.plaque }} ({{ bus.capacite }} places)</option>
-                {% endfor %}
-            </select>
-
-            <label for="driver_id">Chauffeur</label>
-            <select id="driver_id" name="driver_id" required>
-                <option value="">Sélectionnez un chauffeur</option>
-                {% for driver in drivers %}
-                <option value="{{ driver.id }}">{{ driver.nom }}</option>
-                {% endfor %}
-            </select>
-
-            <label for="date">Date</label>
-            <input id="date" type="date" name="date" required>
-
-            <label for="heure_depart">Heure de départ</label>
-            <input id="heure_depart" type="time" name="heure_depart" required>
-
-            <label for="heure_arrivee">Heure d'arrivée estimée</label>
-            <input id="heure_arrivee" type="time" name="heure_arrivee" required>
-
-            <label for="route_id">Trajet (Départ → Destination)</label>
-            <select id="route_id" name="route_id" required>
-                <option value="">Sélectionnez le trajet</option>
-                {% for route in routes %}
-                <option value="{{ route.id }}">
-                    {% set depart = "" %}
-                    {% set destination = "" %}
-                    {% for loc in locations %}
-                        {% if loc.id == route.depart_id %}
-                            {% set depart = loc.nom %}
-                        {% endif %}
-                        {% if loc.id == route.destination_id %}
-                            {% set destination = loc.nom %}
-                        {% endif %}
-                    {% endfor %}
-                    {{ depart }} → {{ destination }}
-                </option>
-                {% endfor %}
-            </select>
-
-            <div class="form-actions">
-                <button class="btn btn--primary" type="submit">Planifier le trajet</button>
+<div class="container my-4 my-lg-5 admin-page admin-assignments-page">
+    <section class="page-header mb-4 assignment-hero">
+        <div class="assignment-hero-copy">
+            <span class="widget-label text-white">Coordination transport</span>
+            <h1>Pilotage des affectations</h1>
+            <p class="text-muted mb-0">Attribuez le bon bus au bon chauffeur, sur le bon trajet, avec une lecture immediate des departs planifies et des ressources disponibles.</p>
+            <div class="assignment-hero-strip">
+                <span><i class="fas fa-route"></i> Trajets centralises</span>
+                <span><i class="fas fa-user-tie"></i> Chauffeurs mobilises</span>
+                <span><i class="fas fa-clock"></i> Horaires sous controle</span>
             </div>
-        </form>
+        </div>
+        <div class="assignment-header-stats">
+            <div class="assignment-mini-stat">
+                <strong>{{ assignment_stats.total }}</strong>
+                <span>trajets</span>
+            </div>
+            <div class="assignment-mini-stat">
+                <strong>{{ assignment_stats.today }}</strong>
+                <span>aujourd'hui</span>
+            </div>
+            <div class="assignment-mini-stat">
+                <strong>{{ assignment_stats.active_buses }}</strong>
+                <span>bus actifs</span>
+            </div>
+            <div class="assignment-mini-stat">
+                <strong>{{ assignment_stats.drivers }}</strong>
+                <span>chauffeurs</span>
+            </div>
+        </div>
+    </section>
+
+    <div class="assignment-layout">
+        <section class="card border-0 assignment-form-card">
+            <div class="card-body">
+                <div class="assignment-card-head">
+                    <div>
+                        <span class="widget-label">Nouvelle planification</span>
+                        <h2>Programmer une affectation</h2>
+                        <p class="text-muted mb-0">Saisissez les informations par etape pour garder une planification rapide, claire et exploitable par toute l'equipe.</p>
+                    </div>
+                    <span class="assignment-pill">Formulaire central</span>
+                </div>
+
+                <form method="POST" class="assignment-form" data-validate>
+                    <div class="assignment-form-section">
+                        <div class="assignment-section-label">
+                            <span class="assignment-section-icon"><i class="fas fa-bus"></i></span>
+                            <div>
+                                <strong>Ressources mobilisees</strong>
+                                <p class="mb-0">Selectionnez le vehicule et le chauffeur qui assureront effectivement le trajet.</p>
+                            </div>
+                        </div>
+                        <div class="assignment-form-grid">
+                            <div class="assignment-field">
+                                <label for="bus_id">Bus</label>
+                                <select id="bus_id" name="bus_id" required>
+                                    <option value="">Selectionnez un bus</option>
+                                    {% for bus in buses %}
+                                    <option value="{{ bus.id }}">{{ bus.plaque }} - {{ bus.capacite or 0 }} places</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="assignment-field">
+                                <label for="driver_id">Chauffeur</label>
+                                <select id="driver_id" name="driver_id" required>
+                                    <option value="">Selectionnez un chauffeur</option>
+                                    {% for driver in drivers %}
+                                    <option value="{{ driver.id }}">{{ driver.nom }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="assignment-form-section">
+                        <div class="assignment-section-label">
+                            <span class="assignment-section-icon"><i class="fas fa-route"></i></span>
+                            <div>
+                                <strong>Trajet a couvrir</strong>
+                                <p class="mb-0">Choisissez ici la ligne a desservir entre le point de depart et la destination.</p>
+                            </div>
+                        </div>
+                        <div class="assignment-form-grid">
+                            <div class="assignment-field assignment-field--full">
+                                <label for="route_id">Trajet</label>
+                                <select id="route_id" name="route_id" required>
+                                    <option value="">Selectionnez le trajet</option>
+                                    {% for route in routes %}
+                                    <option value="{{ route.id }}">{{ route.depart or 'Depart' }} vers {{ route.destination or 'Destination' }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="assignment-form-section">
+                        <div class="assignment-section-label">
+                            <span class="assignment-section-icon"><i class="fas fa-clock"></i></span>
+                            <div>
+                                <strong>Fenetre horaire</strong>
+                                <p class="mb-0">Definissez la date, l'heure de depart et, si elle est connue, l'arrivee estimee.</p>
+                            </div>
+                        </div>
+                        <div class="assignment-form-grid assignment-form-grid--triple">
+                            <div class="assignment-field">
+                                <label for="date">Date</label>
+                                <input id="date" type="date" name="date" value="{{ today_iso }}" required>
+                            </div>
+
+                            <div class="assignment-field">
+                                <label for="heure_depart">Heure de depart</label>
+                                <input id="heure_depart" type="time" name="heure_depart" required>
+                            </div>
+
+                            <div class="assignment-field">
+                                <label for="heure_arrivee">Arrivee estimee</label>
+                                <input id="heure_arrivee" type="time" name="heure_arrivee">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="assignment-form-actions">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-check-circle"></i>
+                            Enregistrer l'affectation
+                        </button>
+                        <a href="/admin/schedules" class="btn btn-outline-primary">
+                            <i class="fas fa-calendar-alt"></i>
+                            Voir les horaires
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <aside class="assignment-side-stack">
+            <section class="card border-0 assignment-side-card assignment-side-card--focus">
+                <div class="card-body">
+                    <span class="widget-label">Vue rapide</span>
+                    <h3>Disponibilite du reseau</h3>
+                    <p class="text-muted mb-0">Ces indicateurs restent visibles pendant la saisie pour mieux repartir les moyens sans perdre le fil.</p>
+                    <div class="assignment-side-metrics">
+                        <div>
+                            <strong>{{ assignment_stats.routes }}</strong>
+                            <span>trajets configures</span>
+                        </div>
+                        <div>
+                            <strong>{{ assignment_stats.active_buses }}</strong>
+                            <span>vehicules prets</span>
+                        </div>
+                        <div>
+                            <strong>{{ assignment_stats.drivers }}</strong>
+                            <span>chauffeurs dispos</span>
+                        </div>
+                        <div>
+                            <strong>{{ assignment_stats.today }}</strong>
+                            <span>courses du jour</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card border-0 assignment-side-card assignment-side-card--tips">
+                <div class="card-body">
+                    <span class="widget-label">Checklist</span>
+                    <h3>Bonnes pratiques d'affectation</h3>
+                    <ul class="assignment-tip-list">
+                        <li>Verifier que le bus choisi correspond bien a la charge attendue.</li>
+                        <li>Eviter les doublons de chauffeur et d'horaire sur une meme plage.</li>
+                        <li>Completer l'arrivee estimee quand elle aide au suivi des rotations.</li>
+                        <li>Consulter l'historique avant d'ajouter une nouvelle ligne similaire.</li>
+                    </ul>
+                </div>
+            </section>
+        </aside>
     </div>
 
-    <div class="card">
-        <h3>Trajets planifiés</h3>
-        {% if assignments %}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Bus</th>
-                    <th>Chauffeur</th>
-                    <th>Trajet</th>
-                    <th>Départ</th>
-                    <th>Statut</th>
-                </tr>
-            </thead>
-            <tbody>
+    <section class="card border-0 assignment-stream-card mt-4">
+        <div class="card-body">
+            <div class="assignment-card-head">
+                <div>
+                    <span class="widget-label">Vue operationnelle</span>
+                    <h2>Affectations recentes</h2>
+                    <p class="text-muted mb-0">Chaque carte resume un trajet programme avec son statut, son bus, son chauffeur et sa fenetre horaire.</p>
+                </div>
+                <span class="assignment-pill">{{ assignments|length }} ligne{% if assignments|length > 1 %}s{% endif %}</span>
+            </div>
+
+            {% if assignments %}
+            <div class="assignment-stream">
                 {% for assign in assignments %}
-                <tr>
-                    <td>{{ assign.date }}</td>
-                    <td><strong>{{ assign.plaque }}</strong></td>
-                    <td>{{ assign.driver }}</td>
-                    <td>{{ assign.depart }} → {{ assign.destination }}</td>
-                    <td>{{ assign.heure_depart }}</td>
-                    <td>
-                        <span class="badge badge--{{ 'pending' if assign.statut == 'planifie' else 'in-progress' if assign.statut == 'en-cours' else 'completed' }}">
-                            {{ assign.statut }}
+                {% set status = assign.statut or 'planifie' %}
+                <article class="assignment-item">
+                    <div class="assignment-item-top">
+                        <span class="assignment-item-label">Affectation #{{ assign.id }}</span>
+                        <span class="assignment-status assignment-status--{{ status|replace(' ', '-') }}">
+                            {{ status }}
                         </span>
-                    </td>
-                </tr>
+                    </div>
+
+                    <div class="assignment-route-visual">
+                        <div class="assignment-stop">
+                            <small>Depart</small>
+                            <strong>{{ assign.depart or 'Trajet a definir' }}</strong>
+                        </div>
+                        <div class="assignment-route-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                        <div class="assignment-stop">
+                            <small>Destination</small>
+                            <strong>{{ assign.destination or 'Destination a definir' }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="assignment-item-main">
+                        <div class="assignment-icon">
+                            <i class="fas fa-bus"></i>
+                        </div>
+                        <div class="assignment-copy">
+                            <h3>{{ assign.plaque }}</h3>
+                            <p>Conduit par {{ assign.chauffeur }}</p>
+                        </div>
+                    </div>
+
+                    <div class="assignment-item-meta">
+                        <span class="assignment-chip">
+                            <i class="fas fa-calendar-day"></i>
+                            {{ assign.date }}
+                        </span>
+                        <span class="assignment-chip">
+                            <i class="fas fa-clock"></i>
+                            Depart {{ assign.heure_depart }}
+                        </span>
+                        <span class="assignment-chip{% if assign.heure_arrivee %} assignment-chip--accent{% endif %}">
+                            <i class="fas fa-flag-checkered"></i>
+                            {% if assign.heure_arrivee %}Arrivee {{ assign.heure_arrivee }}{% else %}Arrivee non definie{% endif %}
+                        </span>
+                        <span class="assignment-chip assignment-chip--soft">
+                            <i class="fas fa-users"></i>
+                            {{ assign.capacite or 0 }} places
+                        </span>
+                    </div>
+                </article>
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p class="muted">Aucun trajet planifié. Créez-en un.</p>
-        {% endif %}
-    </div>
-
-    <a href="/admin" class="btn btn--primary">Retour</a>
-</section>
-
-<style>
-.badge {
-    display: inline-block;
-    padding: 0.3rem 0.7rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.badge--pending {
-    background: rgba(255, 193, 7, 0.2);
-    color: #ffc107;
-}
-
-.badge--in-progress {
-    background: rgba(13, 110, 253, 0.2);
-    color: #0d6efd;
-}
-
-.badge--completed {
-    background: rgba(72, 187, 120, 0.2);
-    color: #248f3d;
-}
-</style>
-
+            </div>
+            {% else %}
+            <div class="empty-feed-state assignment-empty-state">
+                <i class="fas fa-route"></i>
+                <h3>Aucune affectation enregistree</h3>
+                <p>Commencez par creer un trajet dans le formulaire pour remplir ce flux d'affectation.</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
 {% endblock %}

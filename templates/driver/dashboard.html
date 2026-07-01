@@ -2,225 +2,400 @@
 {% block title %}Espace Chauffeur - UAC{% endblock %}
 
 {% block content %}
+{% set has_gps = current_bus and current_bus.current_lat is not none and current_bus.current_lon is not none %}
 <div class="driver-page">
     <div class="page-header mb-4">
         <div>
-            <h1>Espace Chauffeur</h1>
-            <p class="text-muted">Consultez votre mission, votre bus, vos trajets a venir et les annonces recentes de l'universite.</p>
+            <p class="driver-kicker mb-2">Portail Chauffeur</p>
+            <h1 class="mb-2">Espace Chauffeur</h1>
+            <p class="mb-0">Consultez votre mission, votre bus et mettez a jour votre position GPS sans distraction.</p>
         </div>
-        <span class="badge bg-primary px-3 py-2">{{ driver_info.nom if driver_info else 'Chauffeur UAC' }}</span>
+        <span class="driver-user-pill">{{ driver_info.nom if driver_info else 'Chauffeur UAC' }}</span>
     </div>
 
-    <div class="row g-4 mb-4">
-        <div class="col-md-6 col-xl-3">
-            <div class="driver-stat-card">
-                <span class="driver-stat-label">Prochain trajet</span>
-                <strong>{{ current_trip.destination if current_trip else 'Aucun trajet' }}</strong>
-                <p>{{ current_trip.date }} a {{ current_trip.heure_depart }}{% if not current_trip %}Non planifie{% endif %}</p>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="driver-stat-card">
-                <span class="driver-stat-label">Bus assigne</span>
-                <strong>{{ current_bus.plaque if current_bus else 'Non defini' }}</strong>
-                <p>{% if current_bus %}Capacite : {{ current_bus.capacite }} places{% else %}Aucune affectation active{% endif %}</p>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="driver-stat-card">
-                <span class="driver-stat-label">Dernier arret</span>
-                <strong>{{ current_bus.dernier_arret if current_bus and current_bus.dernier_arret else 'Non defini' }}</strong>
-                <p>Point de reference actuel</p>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="driver-stat-card">
-                <span class="driver-stat-label">Position GPS</span>
-                <strong>{% if current_bus and current_bus.current_lat and current_bus.current_lon %}Active{% else %}Indisponible{% endif %}</strong>
-                <p>{% if current_bus and current_bus.current_lat and current_bus.current_lon %}{{ current_bus.current_lat }}, {{ current_bus.current_lon }}{% else %}Aucune coordonnee enregistree{% endif %}</p>
-            </div>
-        </div>
+    <div class="driver-nav mb-4">
+        <a href="#mission" class="driver-nav-link active" data-target="mission">Mission</a>
+        <a href="#position" class="driver-nav-link" data-target="position">Position GPS</a>
+        <a href="#horaires" class="driver-nav-link" data-target="horaires">Horaires</a>
+        <a href="#profil" class="driver-nav-link" data-target="profil">Profil</a>
+        <a href="#consignes" class="driver-nav-link" data-target="consignes">Consignes</a>
     </div>
 
-    <div class="row g-4">
-        <div class="col-xl-8">
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Position du vehicule</h5>
+    <section id="mission" class="section-block is-visible">
+        <div class="row g-4 mb-4">
+            <div class="col-md-6 col-xl-3">
+                <div class="driver-stat-card">
+                    <span class="driver-stat-label">Prochain trajet</span>
+                    {% if current_trip %}
+                    <strong>{{ current_trip.destination }}</strong>
+                    <p>{{ current_trip.date }} a {{ current_trip.heure_depart }}</p>
+                    {% else %}
+                    <strong>Aucun trajet</strong>
+                    <p>Non planifie pour le moment</p>
+                    {% endif %}
                 </div>
-                <div class="card-body">
-                    {% if current_bus and current_bus.current_lat and current_bus.current_lon %}
-                    <div class="driver-map-box mb-3">
-                        <iframe
-                            class="driver-map-frame"
-                            loading="lazy"
-                            referrerpolicy="no-referrer-when-downgrade"
-                            src="https://maps.google.com/maps?q={{ current_bus.current_lat }},{{ current_bus.current_lon }}&z=15&output=embed">
-                        </iframe>
-                    </div>
-                    <div class="driver-route-banner">
-                        {% if current_trip %}
-                        <strong>Mission actuelle :</strong> Vous etes programme pour le trajet vers <strong>{{ current_trip.destination }}</strong> le <strong>{{ current_trip.date }}</strong> a <strong>{{ current_trip.heure_depart }}</strong>.
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="driver-stat-card">
+                    <span class="driver-stat-label">Bus assigne</span>
+                    {% if current_bus %}
+                    <strong>{{ current_bus.plaque }}</strong>
+                    <p>Capacite : {{ current_bus.capacite }} places</p>
+                    {% else %}
+                    <strong>Non defini</strong>
+                    <p>Aucune affectation active</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="driver-stat-card">
+                    <span class="driver-stat-label">Dernier arret</span>
+                    <strong>{{ current_bus.dernier_arret if current_bus and current_bus.dernier_arret else 'Non defini' }}</strong>
+                    <p>Point de reference actuel</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="driver-stat-card">
+                    <span class="driver-stat-label">Position GPS</span>
+                    <strong>{{ 'Active' if has_gps else 'Indisponible' }}</strong>
+                    <p>
+                        {% if has_gps %}
+                        {{ current_bus.current_lat }}, {{ current_bus.current_lon }}
                         {% else %}
-                        <strong>Mission actuelle :</strong> Aucun trajet n'est encore programme pour vous.
+                        Aucune coordonnee enregistree
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 align-items-start">
+            <div class="col-12">
+                <div class="card shadow-sm driver-panel">
+                    <div class="card-header driver-panel-header">
+                        <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Position du vehicule</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if has_gps %}
+                        <div class="driver-map-box mb-3">
+                            <iframe
+                                class="driver-map-frame"
+                                loading="lazy"
+                                referrerpolicy="no-referrer-when-downgrade"
+                                src="https://maps.google.com/maps?q={{ current_bus.current_lat }},{{ current_bus.current_lon }}&z=15&output=embed">
+                            </iframe>
+                        </div>
+                        {% else %}
+                        <div class="driver-empty-state mb-3">
+                            <i class="bi bi-broadcast-pin"></i>
+                            <p class="mb-0">Aucune position GPS disponible pour votre vehicule.</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="driver-route-banner">
+                            {% if current_trip %}
+                            <strong>Mission actuelle :</strong> vous etes programme pour le trajet vers <strong>{{ current_trip.destination }}</strong> le <strong>{{ current_trip.date }}</strong> a <strong>{{ current_trip.heure_depart }}</strong>.
+                            {% else %}
+                            <strong>Mission actuelle :</strong> aucun trajet n'est encore programme pour vous.
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="position" class="section-block">
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm driver-panel">
+                    <div class="card-header driver-panel-header">
+                        <h5 class="mb-0"><i class="bi bi-crosshair2"></i> Mettre a jour ma position</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">Renseignez les coordonnees du bus assigne et le dernier arret connu.</p>
+                        <form method="post" action="/driver/update-location" class="driver-update-form">
+                            <label class="driver-field">
+                                <span>Latitude</span>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    name="current_lat"
+                                    value="{{ current_bus.current_lat if current_bus and current_bus.current_lat is not none else '' }}"
+                                    placeholder="Ex: 0.123456"
+                                    required>
+                            </label>
+                            <label class="driver-field">
+                                <span>Longitude</span>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    name="current_lon"
+                                    value="{{ current_bus.current_lon if current_bus and current_bus.current_lon is not none else '' }}"
+                                    placeholder="Ex: 29.123456"
+                                    required>
+                            </label>
+                            <label class="driver-field">
+                                <span>Dernier arret</span>
+                                <input
+                                    type="text"
+                                    name="dernier_arret"
+                                    value="{{ current_bus.dernier_arret if current_bus and current_bus.dernier_arret else '' }}"
+                                    placeholder="Ex: Entree UAC">
+                            </label>
+                            <button type="button" class="btn btn-outline-primary driver-geo-btn" data-driver-geolocate>
+                                Utiliser ma position actuelle
+                            </button>
+                            <p class="driver-helper mb-0" data-driver-geo-status>
+                                {% if current_bus %}
+                                Bus cible : {{ current_bus.plaque }}
+                                {% else %}
+                                Aucun bus assigne. La mise a jour est desactivee.
+                                {% endif %}
+                            </p>
+                            <button type="submit" class="btn btn-primary w-100 driver-submit-btn" {% if not current_bus %}disabled{% endif %}>
+                                Enregistrer la position
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="horaires" class="section-block">
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm driver-panel">
+                    <div class="card-header driver-panel-header">
+                        <h5 class="mb-0"><i class="bi bi-calendar-event"></i> Mes horaires</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if driver_schedules %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 align-middle driver-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Heure</th>
+                                        <th>Destination</th>
+                                        <th>Bus</th>
+                                        <th>Disponibilite</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for schedule in driver_schedules %}
+                                    <tr>
+                                        <td>{{ schedule.date }}</td>
+                                        <td>{{ schedule.heure_depart }}</td>
+                                        <td><span class="badge rounded-pill text-bg-success">{{ schedule.destination }}</span></td>
+                                        <td>{{ schedule.plaque or 'Non defini' }}</td>
+                                        <td>{{ schedule.disponible or 'oui' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <p class="mb-0">Aucun horaire ne vous est encore assigne.</p>
+                        </div>
                         {% endif %}
                     </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <p class="text-muted">Aucune position GPS disponible pour votre vehicule.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="card shadow-sm mt-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-calendar-event"></i> Mes horaires</h5>
-                </div>
-                <div class="card-body p-0">
-                    {% if driver_schedules %}
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0 align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Heure</th>
-                                    <th>Destination</th>
-                                    <th>Bus</th>
-                                    <th>Disponibilite</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for schedule in driver_schedules %}
-                                <tr>
-                                    <td>{{ schedule.date }}</td>
-                                    <td>{{ schedule.heure_depart }}</td>
-                                    <td><span class="badge bg-success">{{ schedule.destination }}</span></td>
-                                    <td>{{ schedule.plaque or 'Non defini' }}</td>
-                                    <td>{{ schedule.disponible or 'oui' }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="p-4 text-center text-muted">
-                        <p>Aucun horaire ne vous est encore assigne.</p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
+    </section>
 
-        <div class="col-xl-4">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-person-badge"></i> Mon profil</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <strong>Nom</strong>
-                        <p class="mb-0 text-muted">{{ driver_info.nom if driver_info else 'Non renseigne' }}</p>
+    <section id="profil" class="section-block">
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm driver-panel">
+                    <div class="card-header driver-panel-header">
+                        <h5 class="mb-0"><i class="bi bi-person-badge"></i> Mon profil</h5>
                     </div>
-                    <div class="mb-3">
-                        <strong>Identifiant</strong>
-                        <p class="mb-0 text-muted">{{ driver_info.email if driver_info else 'Non renseigne' }}</p>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <strong>Nom</strong>
+                            <p class="mb-0 text-muted">{{ driver_info.nom if driver_info else 'Non renseigne' }}</p>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Identifiant</strong>
+                            <p class="mb-0 text-muted">{{ driver_info.email if driver_info else 'Non renseigne' }}</p>
+                        </div>
+                        <div>
+                            <strong>Role</strong>
+                            <p class="mb-0 text-muted">Chauffeur</p>
+                        </div>
                     </div>
-                    <div>
-                        <strong>Role</strong>
-                        <p class="mb-0 text-muted">Chauffeur</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-megaphone"></i> Annonces recentes</h5>
-                </div>
-                <div class="card-body">
-                    {% if recent_news %}
-                    <div class="driver-news-list">
-                        {% for item in recent_news %}
-                        <article class="driver-news-item">
-                            <span class="driver-news-date">{{ item.date[:10] }}</span>
-                            <h6>{{ item.titre }}</h6>
-                            <p>{{ item.contenu[:110] }}{% if item.contenu|length > 110 %}...{% endif %}</p>
-                            <a href="/news/{{ item.id }}">Lire plus</a>
-                        </article>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p class="text-muted mb-0">Aucune annonce recente.</p>
-                    {% endif %}
                 </div>
             </div>
         </div>
-    </div>
+    </section>
+
+    <section id="consignes" class="section-block">
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm driver-panel">
+                    <div class="card-header driver-panel-header">
+                        <h5 class="mb-0"><i class="bi bi-check2-square"></i> Consignes rapides</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="driver-checklist">
+                            <li>Verifiez votre trajet du jour avant le depart.</li>
+                            <li>Mettez la position GPS a jour lors des changements d'arret.</li>
+                            <li>Confirmez le dernier arret pour aider le suivi etudiant.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 
 <style>
+.driver-page {
+    --driver-bg: #f3f6fb;
+    --driver-border: rgba(13, 82, 165, 0.14);
+    --driver-shadow: 0 14px 34px rgba(11, 32, 61, 0.09);
+    --driver-title: #0f2748;
+    --driver-subtitle: #4e6278;
+    padding-bottom: 0.5rem;
+}
+
 .driver-page .page-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    gap: 1rem;
-    padding: 1.75rem;
-    border-radius: 28px;
-    background: linear-gradient(135deg, #0a2446 0%, #0f5eb7 100%);
-    color: white;
-    box-shadow: 0 24px 50px rgba(7, 28, 55, 0.18);
+    gap: 1.2rem;
+    padding: 2rem;
+    border-radius: 26px;
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 44%),
+        linear-gradient(125deg, #071a33 0%, #0f4f95 52%, #1678d1 100%);
+    color: #fff;
+    box-shadow: 0 22px 42px rgba(5, 26, 52, 0.22);
 }
 
-.driver-page .page-header .text-muted,
+.driver-kicker {
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.82);
+}
+
 .driver-page .page-header h1 {
-    color: white !important;
+    font-size: clamp(1.5rem, 2.2vw, 2.15rem);
+    font-weight: 800;
+}
+
+.driver-page .page-header p {
+    color: rgba(255, 255, 255, 0.86);
+    max-width: 56ch;
+}
+
+.driver-user-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    font-weight: 700;
+    backdrop-filter: blur(4px);
+}
+
+.driver-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 15px 30px rgba(5, 26, 52, 0.08);
+}
+
+.driver-nav-link {
+    padding: 0.85rem 1.15rem;
+    border-radius: 999px;
+    color: #0f4f95;
+    background: rgba(15, 79, 149, 0.08);
+    text-decoration: none;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.driver-nav-link:hover,
+.driver-nav-link.active {
+    color: #0f4f95;
+    background: #ffffff;
+    box-shadow: 0 12px 24px rgba(5, 26, 52, 0.1);
+}
+
+.section-block {
+    display: none;
+}
+
+.section-block.is-visible {
+    display: block;
 }
 
 .driver-stat-card {
     height: 100%;
-    padding: 1.3rem;
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid rgba(13, 110, 253, 0.08);
-    box-shadow: 0 18px 40px rgba(12, 37, 67, 0.06);
+    padding: 1.2rem;
+    border-radius: 20px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border: 1px solid var(--driver-border);
+    box-shadow: var(--driver-shadow);
 }
 
 .driver-stat-label {
     display: block;
-    color: var(--uac-blue);
-    font-size: 0.82rem;
+    color: #0d58ad;
+    font-size: 0.78rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.75rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.7rem;
 }
 
 .driver-stat-card strong {
     display: block;
-    font-size: 1.2rem;
-    margin-bottom: 0.4rem;
+    color: var(--driver-title);
+    font-size: 1.1rem;
+    margin-bottom: 0.38rem;
 }
 
 .driver-stat-card p {
-    color: #67788b;
+    color: var(--driver-subtitle);
     margin: 0;
 }
 
-.driver-page .card {
-    border-radius: 24px;
-    border: 1px solid rgba(13, 110, 253, 0.08);
-    box-shadow: 0 18px 40px rgba(12, 37, 67, 0.06);
+.driver-panel {
+    border-radius: 22px;
+    border: 1px solid var(--driver-border);
+    box-shadow: var(--driver-shadow);
+    overflow: hidden;
 }
 
-.driver-page .card-header {
-    background: #f7fbff;
-    border-bottom: 1px solid rgba(13, 110, 253, 0.08);
+.driver-panel-header {
+    background: linear-gradient(180deg, #f9fcff 0%, #f4f8ff 100%);
+    border-bottom: 1px solid var(--driver-border);
+}
+
+.driver-panel-header h5 {
+    color: var(--driver-title);
+    font-weight: 700;
 }
 
 .driver-map-box {
-    border-radius: 22px;
+    border-radius: 18px;
     overflow: hidden;
-    border: 1px solid rgba(13, 110, 253, 0.08);
+    border: 1px solid var(--driver-border);
+    background: var(--driver-bg);
 }
 
 .driver-map-frame {
@@ -231,64 +406,192 @@
 }
 
 .driver-route-banner {
-    padding: 1rem 1.1rem;
-    border-radius: 16px;
-    background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.04));
-    border: 1px solid rgba(13, 110, 253, 0.14);
-    color: #173a63;
+    padding: 0.95rem 1rem;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(22, 120, 209, 0.11), rgba(22, 120, 209, 0.03));
+    border: 1px solid rgba(13, 88, 173, 0.2);
+    color: #123b66;
 }
 
-.driver-news-list {
+.driver-empty-state {
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(13, 88, 173, 0.09), rgba(13, 88, 173, 0.02));
+    border: 1px dashed rgba(13, 88, 173, 0.22);
+    color: #4f6d8e;
+    text-align: center;
+    padding: 1.4rem;
+}
+
+.driver-empty-state i {
+    font-size: 2rem;
+    color: #0e60b8;
+}
+
+.driver-table thead {
+    background: #f5f9ff;
+}
+
+.driver-table th {
+    font-size: 0.83rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #355476;
+    border-bottom-color: #deebf8;
+}
+
+.driver-update-form {
     display: grid;
-    gap: 1rem;
+    gap: 0.95rem;
 }
 
-.driver-news-item {
-    padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(13, 110, 253, 0.08);
+.driver-field {
+    display: grid;
+    gap: 0.36rem;
 }
 
-.driver-news-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.driver-news-date {
-    display: inline-flex;
-    padding: 0.3rem 0.6rem;
-    border-radius: 999px;
-    background: rgba(13, 110, 253, 0.08);
-    color: var(--uac-blue);
-    font-size: 0.8rem;
+.driver-field span {
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    color: #183a5f;
 }
 
-.driver-news-item h6 {
-    margin-bottom: 0.45rem;
+.driver-field input {
+    width: 100%;
+    padding: 0.82rem 0.95rem;
+    border-radius: 12px;
+    border: 1px solid #d2e1f0;
+    background: #f8fbff;
+    color: #1d2b3a;
 }
 
-.driver-news-item p {
-    color: #66778b;
-    margin-bottom: 0.45rem;
+.driver-field input:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.12);
 }
 
-.driver-news-item a {
-    color: var(--uac-blue);
-    font-weight: 700;
-    text-decoration: none;
+.driver-geo-btn,
+.driver-submit-btn {
+    border-radius: 12px;
+    font-weight: 600;
 }
 
-@media (max-width: 768px) {
+.driver-helper {
+    color: #5e7288;
+    font-size: 0.9rem;
+}
+
+.driver-checklist {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: #526478;
+}
+
+.driver-checklist li + li {
+    margin-top: 0.65rem;
+}
+
+@media (max-width: 991px) {
     .driver-page .page-header {
         align-items: flex-start;
         flex-direction: column;
-        padding: 1.2rem;
+        padding: 1.4rem;
     }
 
+    .driver-user-pill {
+        align-self: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
     .driver-map-frame {
         height: 280px;
     }
 }
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const navLinks = document.querySelectorAll('.driver-nav-link');
+    const sections = document.querySelectorAll('.section-block');
+
+    function showDriverSection(sectionId) {
+        const validSectionIds = Array.from(sections).map((section) => section.id);
+        const resolvedId = validSectionIds.includes(sectionId) ? sectionId : 'mission';
+
+        sections.forEach((section) => {
+            section.classList.toggle('is-visible', section.id === resolvedId);
+        });
+
+        navLinks.forEach((link) => {
+            link.classList.toggle('active', link.dataset.target === resolvedId);
+        });
+    }
+
+    navLinks.forEach((link) => {
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            window.location.hash = this.dataset.target;
+            showDriverSection(this.dataset.target);
+        });
+    });
+
+    if (!window.location.hash) {
+        history.replaceState(null, '', '#mission');
+    }
+
+    const initialSection = window.location.hash ? window.location.hash.replace('#', '') : 'mission';
+    showDriverSection(initialSection || 'mission');
+
+    window.addEventListener('hashchange', function () {
+        const sectionId = window.location.hash ? window.location.hash.replace('#', '') : 'mission';
+        showDriverSection(sectionId || 'mission');
+    });
+
+    const geoButton = document.querySelector("[data-driver-geolocate]");
+    const geoStatus = document.querySelector("[data-driver-geo-status]");
+    const latInput = document.querySelector('input[name="current_lat"]');
+    const lonInput = document.querySelector('input[name="current_lon"]');
+
+    if (!geoButton || !geoStatus || !latInput || !lonInput) {
+        return;
+    }
+
+    if (!navigator.geolocation) {
+        geoButton.disabled = true;
+        geoStatus.textContent = "La geolocalisation du navigateur n'est pas disponible sur cet appareil.";
+        return;
+    }
+
+    geoButton.addEventListener("click", function () {
+        geoButton.disabled = true;
+        geoStatus.textContent = "Recuperation de la position en cours...";
+
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                latInput.value = position.coords.latitude.toFixed(6);
+                lonInput.value = position.coords.longitude.toFixed(6);
+                geoStatus.textContent = "Position recuperee. Vous pouvez enregistrer la mise a jour.";
+                geoButton.disabled = false;
+            },
+            function () {
+                geoStatus.textContent = "Impossible de recuperer la position. Verifiez les autorisations de geolocalisation.";
+                geoButton.disabled = false;
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    });
+});
+</script>
 {% endblock %}
+
+{% block footer %}{% endblock %}

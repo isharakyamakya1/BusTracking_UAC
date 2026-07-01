@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="index-page">
@@ -33,83 +34,95 @@
         </div>
     </nav>
 
-    <header class="hero-section position-relative overflow-hidden">
+    <header class="hero-section hero-rt position-relative overflow-hidden">
         <div class="hero-orb orb-left"></div>
         <div class="hero-orb orb-right"></div>
         <div class="hero-wave"></div>
         <div class="container position-relative z-3">
-            <div class="row align-items-center gy-5 py-5">
-                <div class="col-lg-6">
-                    <div class="hero-kicker">Transport universitaire intelligent</div>
-                    <h1 class="display-3 fw-bold text-white mb-4">Le reseau bus UAC, pilote en temps reel.</h1>
-                    <p class="lead text-white-50 mb-4">Suivez les bus, consultez les annonces du campus et gardez toute la communaute de l'Universite de l'Assomption au Congo connectee sur une seule plateforme.</p>
-                    <div class="hero-actions d-flex flex-wrap gap-3">
+            <div class="hero-rt-grid">
+                <div class="hero-rt-copy">
+                    <span class="hero-rt-kicker">Projet de suivi UAC / Butembo</span>
+                    <h1 class="hero-rt-title">Suivi en temps reel des bus UAC entre Kambali, Mirador et Bulengera.</h1>
+                    <p class="hero-rt-lead">La plateforme capte la position GPS via ESP32, transmet les donnees au serveur Flask et affiche les passages en direct pour reduire l'attente aux arrets Takenga et Rawbank.</p>
+                    <div class="hero-rt-actions">
                         <a href="#news" class="btn btn-light btn-lg hero-btn-primary">Voir les actualites</a>
                         <a href="/login" class="btn btn-outline-light btn-lg hero-btn-secondary">Acceder a la plateforme</a>
                     </div>
-                    <div class="hero-stats row g-3 mt-4">
-                        <div class="col-sm-4">
-                            <div class="hero-stat-card">
-                                <strong>Campus</strong>
-                                <span>Infos certifiees</span>
-                            </div>
+
+                    <div class="hero-rt-metrics">
+                        <div class="hero-rt-metric">
+                            <strong>Flux live</strong>
+                            <span>Coordonnees GPS actualisees et visibles en continu sur la carte.</span>
                         </div>
-                        <div class="col-sm-4">
-                            <div class="hero-stat-card">
-                                <strong>Bus</strong>
-                                <span>Suivi instantane</span>
-                            </div>
+                        <div class="hero-rt-metric">
+                            <strong>Exploitation</strong>
+                            <span>Rotations bus/chauffeur, horaires et trajets synchronises.</span>
                         </div>
-                        <div class="col-sm-4">
-                            <div class="hero-stat-card">
-                                <strong>Etudiants</strong>
-                                <span>Acces simplifie</span>
-                            </div>
+                        <div class="hero-rt-metric">
+                            <strong>Communication</strong>
+                            <span>Annonces officielles et etat du service pour les etudiants.</span>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-6">
-                    <div class="hero-showcase">
-                        <div class="hero-showcase-card hero-showcase-main">
-                            <div class="hero-showcase-top">
-                                <span class="status-dot"></span>
-                                Feed campus live
-                            </div>
-                            <img src="{{ url_for('static', filename='img/LOGO UAC .jpg') }}" alt="Campus UAC" class="hero-showcase-image">
-                            <div class="hero-showcase-body">
-                                <h3>Actualites, likes et commentaires dans une interface claire.</h3>
-                                <p>Un espace central pour l'information officielle, la vie du campus et le suivi du transport.</p>
+
+                <div class="hero-rt-panel">
+                    <div class="hero-showcase-card hero-showcase-main">
+                        <div class="hero-showcase-top">
+                            <span class="status-dot"></span>
+                            Feed operationnel live
+                        </div>
+                        <div class="hero-showcase-marquee" aria-label="Galerie site UAC">
+                            <div class="hero-showcase-track">
+                                <img src="{{ url_for('static', filename='img/S1.jpeg') }}" alt="Site UAC 1">
+                                <img src="{{ url_for('static', filename='img/S2.jpeg') }}" alt="Site UAC 2">
+                                <img src="{{ url_for('static', filename='img/S4.png') }}" alt="Site UAC 3">
+                                <img src="{{ url_for('static', filename='img/S5.png') }}" alt="Site UAC 4">
+                                <img src="{{ url_for('static', filename='img/S6.png') }}" alt="Site UAC 5">
+                                <img src="{{ url_for('static', filename='img/S1.jpeg') }}" alt="Site UAC 1 bis">
+                                <img src="{{ url_for('static', filename='img/S2.jpeg') }}" alt="Site UAC 2 bis">
+                                <img src="{{ url_for('static', filename='img/S4.png') }}" alt="Site UAC 3 bis">
+                                <img src="{{ url_for('static', filename='img/S5.png') }}" alt="Site UAC 4 bis">
+                                <img src="{{ url_for('static', filename='img/S6.png') }}" alt="Site UAC 5 bis">
                             </div>
                         </div>
-                       
+                        <div class="hero-showcase-body">
+                            <h3>Donnees terrain, supervision admin et information etudiante sur une seule vue.</h3>
+                            <p>Le prototype relie GPS, ESP32 et application web pour rendre la mobilite universitaire plus previsible a l'UAC/Butembo.</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </header>
 
-    <section id="community" class="community-strip">
+    <section id="community" class="community-strip rt-community">
         <div class="container">
-            <div class="community-grid">
-                <div class="community-card">
-                    <i class="fas fa-bullhorn"></i>
-                    <div>
-                        <strong>Annonces officielles</strong>
-                        <span>Communication rapide de l'administration</span>
-                    </div>
+            <div class="rt-community-shell">
+                <div class="rt-community-head">
+                    <span class="rt-community-kicker">Plateforme metier</span>
+                    <h2>Un outil concret pour reduire les retards, l'incertitude et le temps d'attente des etudiants.</h2>
                 </div>
-                <div class="community-card">
-                    <i class="fas fa-heart"></i>
-                    <div>
-                        <strong>Engagement social</strong>
-                        <span>Likes et retours de la communaute</span>
+                <div class="community-grid rt-community-grid">
+                    <div class="community-card">
+                        <i class="fas fa-bullhorn"></i>
+                        <div>
+                            <strong>Annonces officielles</strong>
+                            <span>Communication rapide de l'administration</span>
+                        </div>
                     </div>
-                </div>
-                <div class="community-card">
-                    <i class="fas fa-comments"></i>
-                    <div>
-                        <strong>Commentaires</strong>
-                        <span>Discussions visibles autour des actualites</span>
+                    <div class="community-card">
+                        <i class="fas fa-heart"></i>
+                        <div>
+                            <strong>Engagement social</strong>
+                            <span>Likes et retours de la communaute</span>
+                        </div>
+                    </div>
+                    <div class="community-card">
+                        <i class="fas fa-comments"></i>
+                        <div>
+                            <strong>Commentaires</strong>
+                            <span>Discussions visibles autour des actualites</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -128,47 +141,39 @@
             </div>
 
             {% if news %}
-            <div class="news-feed-grid">
+            <div class="row g-4 index-news-grid">
                 {% for item in news %}
-                <article class="index-news-card">
-                    <a href="/news/{{ item.id }}" class="news-card-link text-reset text-decoration-none">
-                        <div class="index-news-media position-relative overflow-hidden">
+                <div class="col-md-6 col-xl-4 index-news-column">
+                    <a href="/news/{{ item.id }}" class="news-card text-decoration-none text-reset h-100">
+                        <div class="news-card-media position-relative overflow-hidden">
                             {% if item.image_path %}
-                            <img src="{{ url_for('static', filename='uploads/news/' ~ item.image_path) }}" alt="{{ item.titre }}" class="index-news-image w-100">
+                            <img src="{{ url_for('static', filename='uploads/news/' ~ item.image_path) }}" alt="{{ item.titre }}" class="news-image w-100">
                             {% else %}
-                            <div class="index-news-image placeholder d-flex align-items-center justify-content-center text-white">
-                                <i class="fas fa-newspaper fa-2x"></i>
+                            <div class="news-image news-image-placeholder d-flex align-items-center justify-content-center w-100">
+                                <span class="fw-semibold">Actualite UAC</span>
                             </div>
                             {% endif %}
-                            <div class="index-news-date">
-                                <span class="index-news-day">{{ item.date[8:10] }}</span>
-                                <span class="index-news-month">{% set month = item.date[5:7] %}
-                                    {% if month == '01' %}Jan{% elif month == '02' %}Fév{% elif month == '03' %}Mars{% elif month == '04' %}Avr{% elif month == '05' %}Mai{% elif month == '06' %}Juin{% elif month == '07' %}Juil{% elif month == '08' %}Août{% elif month == '09' %}Sept{% elif month == '10' %}Oct{% elif month == '11' %}Nov{% else %}Déc{% endif %}
-                                </span>
-                            </div>
+                            <div class="news-overlay"></div>
+                            <div class="position-absolute top-0 end-0 m-3 badge bg-white text-dark shadow-sm">{{ item.date[:10] }}</div>
                         </div>
-                        <div class="index-news-body p-4">
-                            <div class="announcement-source mb-3">
-                                <span>{{ item.admin_name or 'Administration UAC' }}</span>
-                                <span>{{ item.date[11:16] if item.date|length > 16 else '' }}</span>
-                            </div>
-                            <h3>{{ item.titre }}</h3>
-                            <p>{{ item.contenu[:120] }}{% if item.contenu|length > 120 %}...{% endif %}</p>
-                            <div class="announcement-links mt-3">
-                                <a href="/news/{{ item.id }}" class="announcement-read-link">Lire plus</a>
-                                <span>{{ item.comment_count or 0 }} commentaires</span>
-                                <span>{{ item.like_count or 0 }} j'aime</span>
+                        <div class="card-body news-card-body">
+                            <h6 class="card-title news-card-title">{{ item.titre }}</h6>
+                            <p class="card-text news-card-text">{{ item.contenu[:130] }}{% if item.contenu|length > 130 %}...{% endif %}</p>
+                            <div class="stats flex-wrap gap-2">
+                                <span class="badge bg-primary-light text-primary"><i class="bi bi-person-circle"></i> {{ item.admin_name or 'UAC' }}</span>
+                                <span class="badge bg-info-light text-info"><i class="bi bi-chat"></i> {{ item.comment_count }}</span>
+                                <span class="badge bg-danger-light text-danger"><i class="bi bi-heart"></i> {{ item.like_count }}</span>
                             </div>
                         </div>
                     </a>
-                </article>
+                </div>
                 {% endfor %}
             </div>
             {% else %}
             <div class="empty-feed-state">
                 <i class="fas fa-newspaper"></i>
                 <h3>Aucune actualite publiee</h3>
-                <p>Le campus n'a encore partage aucune information. Revenez plus tard.</p>
+                <p>Le site n'a encore partage aucune information. Revenez plus tard.</p>
             </div>
             {% endif %}
         </div>
@@ -207,7 +212,7 @@
 
             <div class="footer-copy">
                 <span>&copy; 2026 UAC Transport</span>
-                <small>Prototype academique de TFC</small>
+                <small>Prototype academique de TFC by Mumbere Kyamakya Gilbert </small>
             </div>
         </div>
     </footer>
