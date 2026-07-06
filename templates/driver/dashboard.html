@@ -78,12 +78,14 @@
                     <div class="card-body">
                         {% if has_gps %}
                         <div class="driver-map-box mb-3">
-                            <iframe
+                            <div
+                                id="driver-leaflet-map"
                                 class="driver-map-frame"
-                                loading="lazy"
-                                referrerpolicy="no-referrer-when-downgrade"
-                                src="https://maps.google.com/maps?q={{ current_bus.current_lat }},{{ current_bus.current_lon }}&z=15&output=embed">
-                            </iframe>
+                                data-lat="{{ current_bus.current_lat }}"
+                                data-lon="{{ current_bus.current_lon }}"
+                                data-plaque="{{ current_bus.plaque }}"
+                                data-stop="{{ current_bus.dernier_arret or '' }}">
+                            </div>
                         </div>
                         {% else %}
                         <div class="driver-empty-state mb-3">

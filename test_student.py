@@ -20,5 +20,6 @@ dashboard = client.get("/student")
 assert dashboard.status_code == 200, f"Expected student dashboard, got {dashboard.status_code}"
 assert b"Tableau de Bord Etudiant" in dashboard.data
 assert b"Suivre le bus" in dashboard.data
+assert b"Position actuelle" in dashboard.data
 
 print("Student dashboard smoke test passed.")

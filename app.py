@@ -4,9 +4,38 @@ from werkzeug.utils import secure_filename
 import sqlite3
 import os
 from datetime import datetime, date
+import math
+import requests
+import unicodedata
 
 app = Flask(__name__)
 app.secret_key = "secret_key_transport_uac"
+
+BUTEMBO_REFERENCE_POINTS = [
+    {"nom": "Rond-point VGH", "type": "rond-point", "latitude": 0.1325, "longitude": 29.2858},
+    {"nom": "Arrêt Rawbank", "type": "arrêt", "latitude": 0.1308, "longitude": 29.2862},
+    {"nom": "Arrêt Takenga", "type": "arrêt", "latitude": 0.1245, "longitude": 29.2885},
+    {"nom": "Arrêt Mirador", "type": "arrêt", "latitude": 0.1170, "longitude": 29.2910},
+    {"nom": "Arrêt Kambali", "type": "arrêt", "latitude": 0.1392, "longitude": 29.2945},
+    {"nom": "Arrêt Bulengera", "type": "arrêt", "latitude": 0.1460, "longitude": 29.3110},
+    {"nom": "Rond-point Nyamwisi", "type": "rond-point", "latitude": 0.1350, "longitude": 29.2845},
+    {"nom": "Cathédrale de Butembo", "type": "repère", "latitude": 0.1365, "longitude": 29.2915},
+    {"nom": "Marché Central de Butembo", "type": "marché", "latitude": 0.1338, "longitude": 29.2830},
+    {"nom": "Rond-point Tsaka-Tsaka", "type": "rond-point", "latitude": 0.1285, "longitude": 29.2870},
+    {"nom": "Hôpital de Kitatumba (HGR)", "type": "hôpital", "latitude": 0.1420, "longitude": 29.2780},
+    {"nom": "Aéroport de Rughenda", "type": "aéroport", "latitude": 0.1220, "longitude": 29.3080},
+    {"nom": "Quartier Matanda", "type": "quartier", "latitude": 0.1360, "longitude": 29.2750},
+    {"nom": "Arrêt Kyaghala", "type": "arrêt", "latitude": 0.1120, "longitude": 29.2930},
+    {"nom": "Carrefour Bwanandeke", "type": "carrefour", "latitude": 0.1415, "longitude": 29.2865},
+    {"nom": "Pont Kayole", "type": "pont", "latitude": 0.1050, "longitude": 29.2950},
+    {"nom": "Rue Julien Paluku Kahonngya", "type": "rue", "latitude": 0.128852, "longitude": 29.293853},
+    {"nom": "RN2", "type": "route", "latitude": 0.129048, "longitude": 29.293198},
+]
+
+BLOCKED_LOCATION_NAMES = {
+    "avenue vihundira",
+    "avenue sainte face",
+}
 
 DATABASE = "database.db"
 NEWS_UPLOAD_FOLDER = os.path.join("static", "uploads", "news")
@@ -100,6 +129,203 @@ def get_user_by_identifier(identifier):
     return user
 
 
+def haversine_distance_meters(lat1, lon1, lat2, lon2):
+    # Retourne la distance en mètres entre deux coordonnées géographiques
+    R = 6371000.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    
+    a = math.sin(dphi/2.0)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2.0)**2
+    # Sécurisation contre les micro-imprécisions des flottants pouvant causer un crash math domaine
+    a = max(0.0, min(1.0, a))
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
+
+def normalize_place_name(value):
+    if value is None:
+        return ""
+    normalized = unicodedata.normalize("NFKD", str(value))
+    normalized = normalized.encode("ascii", "ignore").decode("ascii")
+    normalized = normalized.lower()
+    for separator in ("→", "=>", "->", "—", "–", "/", "|"):
+        normalized = normalized.replace(separator, " ")
+    return " ".join(normalized.split())
+
+
+def extract_destination_name(destination_text):
+    if not destination_text:
+        return None
+    value = str(destination_text).strip()
+    for separator in ("→", "->", "—", "–", "/"):
+        if separator in value:
+            value = value.split(separator)[-1].strip()
+    return value or None
+
+
+def find_named_location(conn, raw_name):
+    target = normalize_place_name(raw_name)
+    if not target:
+        return None
+
+    rows = conn.execute("SELECT id, nom, latitude, longitude FROM locations WHERE latitude IS NOT NULL AND longitude IS NOT NULL").fetchall()
+    best_row = None
+    best_score = 0
+    for row in rows:
+        row_name = normalize_place_name(row["nom"])
+        score = 0
+        if row_name == target:
+            score = 100
+        elif row_name.endswith(target) or target.endswith(row_name):
+            score = 85
+        elif target in row_name or row_name in target:
+            score = 70
+        if score > best_score:
+            best_row = row
+            best_score = score
+    return best_row
+
+
+def resolve_route_destination(conn, destination_text):
+    terminal_name = extract_destination_name(destination_text)
+    if not terminal_name:
+        return None
+    location = find_named_location(conn, terminal_name)
+    if not location:
+        return None
+    return {
+        "name": location["nom"],
+        "latitude": float(location["latitude"]),
+        "longitude": float(location["longitude"]),
+    }
+
+
+def find_nearest_location(conn, lat, lon, max_distance_m=100.0):
+    rows = conn.execute("SELECT id, nom, latitude, longitude FROM locations WHERE latitude IS NOT NULL AND longitude IS NOT NULL").fetchall()
+    best = None
+    best_dist = None
+    for r in rows:
+        try:
+            lat2 = float(r['latitude'])
+            lon2 = float(r['longitude'])
+        except Exception:
+            continue
+        d = haversine_distance_meters(lat, lon, lat2, lon2)
+        if best is None or d < best_dist:
+            best = r
+            best_dist = d
+    if best is not None and best_dist is not None and best_dist <= max_distance_m:
+        return best['id'], best['nom'], best_dist
+    return None, None, None
+
+
+def resolve_current_location(conn, lat, lon):
+    location_id, location_name, location_distance_m = find_nearest_location(conn, lat, lon, max_distance_m=100.0)
+    location_source = "database" if location_name else None
+
+    if not location_name:
+        try:
+            reverse_name = reverse_geocode(lat, lon, conn)
+            if reverse_name:
+                location_name = reverse_name
+                location_source = "geocode"
+        except Exception:
+            pass
+
+    return {
+        "location_id": location_id,
+        "location_name": location_name,
+        "location_distance_m": location_distance_m,
+        "location_source": location_source,
+    }
+
+
+def reverse_geocode(lat, lon, conn=None, max_distance_m=50):
+    own_conn = False
+    if conn is None:
+        conn = get_db()
+        own_conn = True
+
+    try:
+        tol = 0.0005
+        rows = conn.execute(
+            "SELECT id, lat, lon, name FROM geocache WHERE ABS(lat - ?) <= ? AND ABS(lon - ?) <= ?",
+            (lat, tol, lon, tol)
+        ).fetchall()
+        for r in rows:
+            try:
+                lat2 = float(r['lat'])
+                lon2 = float(r['lon'])
+            except Exception:
+                continue
+            if normalize_place_name(r['name']) in BLOCKED_LOCATION_NAMES:
+                continue
+            d = haversine_distance_meters(lat, lon, lat2, lon2)
+            if d <= max_distance_m:
+                return r['name']
+
+        url = 'https://nominatim.openstreetmap.org/reverse'
+        params = {
+            'lat': lat,
+            'lon': lon,
+            'format': 'jsonv2',
+            'zoom': 16,
+            'addressdetails': 0,
+            'accept-language': 'fr'
+        }
+        headers = {'User-Agent': 'UAC-Transport/1.0 (+https://uac.example)'}
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                name = data.get('name') or data.get('display_name')
+                if name and normalize_place_name(name) not in BLOCKED_LOCATION_NAMES:
+                    conn.execute("INSERT INTO geocache (lat, lon, name) VALUES (?, ?, ?)", (lat, lon, name))
+                    conn.commit()
+                    return name
+        except Exception:
+            pass
+
+    finally:
+        if own_conn:
+            conn.close()
+
+    return None
+
+
+def seed_butembo_reference_points(conn):
+    cursor = conn.cursor()
+    removed_names = ["Avenue Vihundira", "Avenue Sainte Face"]
+    if removed_names:
+        placeholders = ",".join("?" for _ in removed_names)
+        cursor.execute(f"DELETE FROM locations WHERE nom IN ({placeholders})", removed_names)
+        cursor.execute(f"DELETE FROM geocache WHERE name IN ({placeholders})", removed_names)
+
+    for point in BUTEMBO_REFERENCE_POINTS:
+        cursor.execute(
+            """
+            INSERT INTO locations (nom, type, latitude, longitude)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(nom) DO UPDATE SET
+                type = excluded.type,
+                latitude = excluded.latitude,
+                longitude = excluded.longitude
+            """,
+            (point["nom"], point["type"], point["latitude"], point["longitude"])
+        )
+
+    manual_names = [point["nom"] for point in BUTEMBO_REFERENCE_POINTS]
+    if manual_names:
+        placeholders = ",".join("?" for _ in manual_names)
+        cursor.execute(f"DELETE FROM geocache WHERE name IN ({placeholders})", manual_names)
+        cursor.executemany(
+            "INSERT INTO geocache (lat, lon, name) VALUES (?, ?, ?)",
+            [(point["latitude"], point["longitude"], point["nom"]) for point in BUTEMBO_REFERENCE_POINTS]
+        )
+
+
 def get_current_user():
     user_id = session.get("user_id")
     if not user_id:
@@ -146,7 +372,6 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
 
-    # 1. Table des Utilisateurs
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -157,7 +382,6 @@ def init_db():
     )
     """)
 
-    # 2. Table des Lieux
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS locations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -168,7 +392,6 @@ def init_db():
     )
     """)
 
-    # 3. Table des Bus
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS buses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -181,7 +404,6 @@ def init_db():
     )
     """)
 
-    # Ajout des colonnes manquantes pour les anciennes bases
     cursor.execute("PRAGMA table_info(buses)")
     buses_columns = [row[1] for row in cursor.fetchall()]
     if "current_lat" not in buses_columns:
@@ -191,7 +413,6 @@ def init_db():
     if "dernier_arret" not in buses_columns:
         cursor.execute("ALTER TABLE buses ADD COLUMN dernier_arret TEXT")
 
-    # 4. Table des Tarifs (Routes)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS routes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -204,7 +425,6 @@ def init_db():
     )
     """)
 
-    # 5. Table des Affectations
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS assignments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -247,7 +467,6 @@ def init_db():
     )
     """)
 
-    # 6. Table des Actualités
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS news (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -260,7 +479,6 @@ def init_db():
     )
     """)
 
-    # Mise à jour des colonnes existantes si nécessaire
     cursor.execute("PRAGMA table_info(users)")
     users_columns = [row[1] for row in cursor.fetchall()]
     if "telephone" not in users_columns:
@@ -302,6 +520,16 @@ def init_db():
     """)
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS geocache (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lat REAL NOT NULL,
+        lon REAL NOT NULL,
+        name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS news_likes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         news_id INTEGER NOT NULL,
@@ -313,30 +541,31 @@ def init_db():
     )
     """)
 
-    # --- INSERTIONS PAR DÉFAUT ---
-    # Insertion de l'admin par défaut (user: admin / pass: uac2026)
     hashed_pw = generate_password_hash("uac2026")
     cursor.execute("INSERT OR IGNORE INTO users (nom, email, password, role, matricule) VALUES (?, ?, ?, ?, ?)",
                    ("Admin UAC", "admin", hashed_pw, "admin", "admin"))
     cursor.execute("UPDATE users SET password = ?, matricule = ? WHERE email = ?", (hashed_pw, "admin", "admin"))
 
-    # Insertion d'un compte étudiant de demonstration
     cursor.execute("INSERT OR IGNORE INTO users (nom, email, password, role, matricule) VALUES (?, ?, ?, ?, ?)",
                    ("Etudiant Test", "POLY163/2022", hashed_pw, "student", "POLY163/2022"))
 
-    # Insertion des lieux stratégiques
-    lieux = [
-        ('Takenga', 'station', -0.1234, 29.1234),
-        ('Rawbank', 'station', -0.1235, 29.1235),
-        ('Kambali', 'site', -0.1250, 29.1260),
-        ('Mirador', 'site', -0.1280, 29.1290)
-    ]
-    cursor.executemany("INSERT OR IGNORE INTO locations (nom, type, latitude, longitude) VALUES (?, ?, ?, ?)", lieux)
+    seed_butembo_reference_points(conn)
+
+    cursor.execute("SELECT id, current_lat, current_lon FROM buses WHERE current_lat IS NOT NULL AND current_lon IS NOT NULL")
+    for bus in cursor.fetchall():
+        try:
+            latitude = float(bus["current_lat"])
+            longitude = float(bus["current_lon"])
+        except Exception:
+            continue
+        _, location_name, _ = find_nearest_location(conn, latitude, longitude, max_distance_m=100.0)
+        if location_name:
+            cursor.execute("UPDATE buses SET dernier_arret = ? WHERE id = ?", (location_name, bus["id"]))
 
     conn.commit()
     conn.close()
 
-# Initialisation au lancement
+
 with app.app_context():
     init_db()
 
@@ -357,6 +586,7 @@ def index():
     """).fetchall()
     conn.close()
     return render_template("index.html", news=news)
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -381,10 +611,12 @@ def login():
         return "Identifiants incorrects", 401
     return render_template("login.html")
 
+
 @app.route("/register")
 @app.route("/register.html")
 def register_info():
     return render_template("register.html")
+
 
 @app.route("/logout")
 def logout():
@@ -422,6 +654,7 @@ def admin_dashboard():
         total_locations=total_locations,
         total_assignments=total_assignments,
     )
+
 
 @app.route("/driver")
 def driver_dashboard():
@@ -462,6 +695,7 @@ def driver_dashboard():
         current_bus=current_bus,
     )
 
+
 @app.route("/driver/update-location", methods=["POST"])
 def driver_update_location():
     if session.get("role") != "driver":
@@ -485,6 +719,8 @@ def driver_update_location():
         return redirect(url_for("driver_dashboard"))
 
     conn = get_db()
+    location_context = resolve_current_location(conn, latitude, longitude)
+    resolved_location_name = location_context["location_name"] or dernier_arret or None
     assigned_bus = conn.execute("""
         SELECT s.bus_id
         FROM schedules s
@@ -498,11 +734,12 @@ def driver_update_location():
             UPDATE buses
             SET current_lat = ?, current_lon = ?, dernier_arret = ?
             WHERE id = ?
-        """, (latitude, longitude, dernier_arret or None, assigned_bus["bus_id"]))
+        """, (latitude, longitude, resolved_location_name, assigned_bus["bus_id"]))
         conn.commit()
 
     conn.close()
     return redirect(url_for("driver_dashboard"))
+
 
 @app.route("/api/update-location", methods=["POST"])
 def api_update_location():
@@ -518,43 +755,83 @@ def api_update_location():
     dernier_arret = data.get("dernier_arret") or data.get("last_stop") or data.get("stop_name")
 
     if latitude is None or longitude is None:
-        return jsonify({"error": "latitude et longitude sont requis"}), 400
+        return jsonify({"error": "Coordonnées invalides"}), 400
 
     try:
         latitude = float(latitude)
         longitude = float(longitude)
     except (ValueError, TypeError):
-        return jsonify({"error": "latitude ou longitude invalides"}), 400
+        return jsonify({"error": "Coordonnées invalides"}), 400
 
     if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
-        return jsonify({"error": "coordonnees hors limites"}), 400
+        return jsonify({"error": "Coordonnées invalides"}), 400
 
     conn = get_db()
     bus = None
     if bus_id:
         bus = conn.execute("SELECT * FROM buses WHERE id = ?", (bus_id,)).fetchone()
     elif plaque:
-        bus = conn.execute("SELECT * FROM buses WHERE plaque = ?", (plaque,)).fetchone()
+        bus = conn.execute("SELECT * FROM buses WHERE plaque = ? COLLATE NOCASE", (plaque,)).fetchone()
 
     if not bus:
         conn.close()
-        return jsonify({"error": "bus introuvable. bus_id ou plaque requis"}), 404
+        return jsonify({"error": "Bus introuvable"}), 404
 
     conn.execute(
         "UPDATE buses SET current_lat = ?, current_lon = ?, dernier_arret = ? WHERE id = ?",
-        (latitude, longitude, dernier_arret or None, bus["id"])
+        (latitude, longitude, None, bus["id"])
     )
     conn.commit()
-    conn.close()
 
-    return jsonify({
+    location_context = resolve_current_location(conn, latitude, longitude)
+    destination_id = location_context["location_id"]
+    destination_name = location_context["location_name"]
+    destination_dist_m = location_context["location_distance_m"]
+    at_destination = destination_name is not None
+
+    resolved_location_name = destination_name or dernier_arret or None
+    if resolved_location_name:
+        conn.execute(
+            "UPDATE buses SET dernier_arret = ? WHERE id = ?",
+            (resolved_location_name, bus["id"])
+        )
+        conn.commit()
+
+    driver = conn.execute(
+        "SELECT u.id as id, u.nom as nom FROM users u JOIN schedules s ON s.driver_id = u.id WHERE s.bus_id = ? ORDER BY s.date DESC, s.heure_depart DESC LIMIT 1",
+        (bus["id"],)
+    ).fetchone()
+    if not driver:
+        driver = conn.execute(
+            "SELECT u.id as id, u.nom as nom FROM users u JOIN assignments a ON a.driver_id = u.id WHERE a.bus_id = ? ORDER BY a.date DESC LIMIT 1",
+            (bus["id"],)
+        ).fetchone()
+
+    driver_info = None
+    if driver:
+        driver_info = {"id": driver["id"], "nom": driver["nom"]}
+
+    resp = {
         "status": "ok",
         "bus_id": bus["id"],
         "plaque": bus["plaque"],
         "current_lat": latitude,
         "current_lon": longitude,
-        "dernier_arret": dernier_arret
-    }), 200
+        "dernier_arret": resolved_location_name,
+        "at_destination": at_destination,
+        "destination_id": destination_id,
+        "destination_name": destination_name,
+        "destination_distance_m": destination_dist_m,
+        "current_location_id": destination_id,
+        "current_location_name": destination_name,
+        "current_location_distance_m": destination_dist_m,
+        "current_location_source": location_context["location_source"],
+        "driver": driver_info
+    }
+
+    conn.close()
+    return jsonify(resp), 200
+
 
 @app.route("/api/buses/locations")
 def api_get_bus_locations():
@@ -562,8 +839,57 @@ def api_get_bus_locations():
     buses = conn.execute(
         "SELECT id, plaque, current_lat, current_lon, dernier_arret FROM buses WHERE current_lat IS NOT NULL AND current_lon IS NOT NULL"
     ).fetchall()
+
+    result = []
+    for b in buses:
+        bus = dict(b)
+        try:
+            lat = float(bus.get('current_lat'))
+            lon = float(bus.get('current_lon'))
+        except Exception:
+            lat = None
+            lon = None
+
+        destination_id = None
+        destination_name = None
+        destination_distance_m = None
+        current_location_source = None
+        if lat is not None and lon is not None:
+            location_context = resolve_current_location(conn, lat, lon)
+            destination_id = location_context["location_id"]
+            destination_name = location_context["location_name"]
+            destination_distance_m = location_context["location_distance_m"]
+            current_location_source = location_context["location_source"]
+
+        driver = conn.execute(
+            "SELECT u.id as id, u.nom as nom FROM users u JOIN schedules s ON s.driver_id = u.id WHERE s.bus_id = ? ORDER BY s.date DESC, s.heure_depart DESC LIMIT 1",
+            (bus['id'],)
+        ).fetchone()
+        if not driver:
+            driver = conn.execute(
+                "SELECT u.id as id, u.nom as nom FROM users u JOIN assignments a ON a.driver_id = u.id WHERE a.bus_id = ? ORDER BY a.date DESC LIMIT 1",
+                (bus['id'],)
+            ).fetchone()
+
+        driver_info = None
+        if driver:
+            driver_info = {"id": driver['id'], "nom": driver['nom']}
+
+        bus.update({
+            'destination_id': destination_id,
+            'destination_name': destination_name,
+            'destination_distance_m': destination_distance_m,
+            'current_location_id': destination_id,
+            'current_location_name': destination_name,
+            'current_location_distance_m': destination_distance_m,
+            'current_location_source': current_location_source,
+            'driver': driver_info
+        })
+        result.append(bus)
+
     conn.close()
-    return jsonify([dict(bus) for bus in buses])
+    return jsonify(result)
+
 
 @app.route("/api/supported-modules")
 def api_supported_modules():
@@ -582,6 +908,7 @@ def api_supported_modules():
         "notes": "Cette API accepte tout module capable d'envoyer une requete HTTP POST avec latitude/longitude et un identifiant de bus."
     })
 
+
 @app.route("/student")
 def student_dashboard():
     if session.get("role") != "student":
@@ -589,7 +916,6 @@ def student_dashboard():
     
     conn = get_db()
     
-    # Récupérer les actualités récentes
     news = conn.execute("""
         SELECT n.*, u.nom AS admin_name,
             (SELECT COUNT(*) FROM news_comments c WHERE c.news_id = n.id) AS comment_count,
@@ -600,7 +926,6 @@ def student_dashboard():
         LIMIT 5
     """).fetchall()
     
-    # Récupérer les horaires disponibles
     schedules = conn.execute("""
         SELECT s.*, b.plaque, u.nom AS driver_name, b.capacite
         FROM schedules s 
@@ -611,7 +936,6 @@ def student_dashboard():
         LIMIT 10
     """).fetchall()
     
-    # Récupérer les tarifs avec libellés de départ et destination
     routes = conn.execute("""
         SELECT r.*, l1.nom as depart, l2.nom as destination
         FROM routes r
@@ -620,7 +944,12 @@ def student_dashboard():
         ORDER BY l1.nom, l2.nom
     """).fetchall()
 
-    # Récupérer une position de bus en temps réel si disponible
+    route_destination_label = None
+    route_destination_location = None
+    if schedules:
+        route_destination_label = schedules[0]["destination"]
+        route_destination_location = resolve_route_destination(conn, route_destination_label)
+
     bus_current = conn.execute("""
         SELECT plaque, current_lat, current_lon, dernier_arret
         FROM buses
@@ -628,16 +957,32 @@ def student_dashboard():
         ORDER BY id DESC
         LIMIT 1
     """).fetchone()
+
+    current_location_name = None
+    current_location_distance_m = None
+    current_location_source = None
+    if bus_current:
+        try:
+            location_context = resolve_current_location(
+                conn,
+                float(bus_current["current_lat"]),
+                float(bus_current["current_lon"])
+            )
+            current_location_name = location_context["location_name"]
+            current_location_distance_m = location_context["location_distance_m"]
+            current_location_source = location_context["location_source"]
+        except Exception:
+            pass
     
-    # Informations de l'étudiant connecté
     user_id = session.get("user_id")
     user_info = None
     if user_id:
         user_info = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
 
     bus_status_message = None
+    departure_message = None
     if bus_current:
-        last_stop = bus_current["dernier_arret"] or "un point de passage"
+        last_stop = current_location_name or bus_current["dernier_arret"] or "un point de passage"
         next_destination = schedules[0]["destination"].strip() if schedules and schedules[0]["destination"] else None
 
         if next_destination:
@@ -662,6 +1007,25 @@ def student_dashboard():
             bus_status_message = (
                 f"Le bus est actuellement à {last_stop}. Les mises à jour de sa destination arrivent bientôt."
             )
+
+        if schedules and schedules[0]["date"] and schedules[0]["heure_depart"]:
+            try:
+                departure_datetime = datetime.strptime(
+                    f"{schedules[0]['date']} {schedules[0]['heure_depart']}",
+                    "%Y-%m-%d %H:%M"
+                )
+                now = datetime.now()
+                remaining = departure_datetime - now
+                remaining_minutes = int(remaining.total_seconds() // 60)
+                if 0 <= remaining.total_seconds() <= 3600:
+                    if remaining_minutes <= 0:
+                        departure_message = "Le bus décolle dans moins d'une minute."
+                    elif remaining_minutes == 1:
+                        departure_message = "Le bus décolle dans 1 minute."
+                    else:
+                        departure_message = f"Le bus décolle dans {remaining_minutes} minutes."
+            except ValueError:
+                pass
     
     conn.close()
     
@@ -670,8 +1034,14 @@ def student_dashboard():
                          schedules=schedules, 
                          routes=routes,
                          bus_current=bus_current,
+                         route_destination_label=route_destination_label,
+                         route_destination_location=route_destination_location,
+                         current_location_name=current_location_name,
+                         current_location_distance_m=current_location_distance_m,
+                         current_location_source=current_location_source,
                          user_info=user_info,
-                         bus_status_message=bus_status_message)
+                         bus_status_message=bus_status_message,
+                         departure_message=departure_message)
 
 
 @app.route("/student/profile-photo", methods=["POST"])
@@ -710,6 +1080,7 @@ def student_profile_photo():
 
     return redirect(url_for("student_dashboard") + "#profil")
 
+
 @app.route("/api/comments/<int:news_id>")
 def api_comments(news_id):
     conn = get_db()
@@ -725,7 +1096,7 @@ def api_comments(news_id):
     conn.close()
     return jsonify([dict(comment) for comment in comments])
 
-# --- GESTION DES BUS ---
+
 @app.route("/admin/buses", methods=["GET", "POST"])
 def admin_buses():
     if session.get("role") != "admin":
@@ -748,6 +1119,7 @@ def admin_buses():
     conn.close()
     return render_template("admin/buses.html", buses=buses)
 
+
 @app.route("/admin/add_bus", methods=["POST"])
 def admin_add_bus():
     if session.get("role") != "admin":
@@ -765,6 +1137,7 @@ def admin_add_bus():
         return "Cette plaque existe déjà", 400
     conn.close()
     return redirect(url_for("admin_buses"))
+
 
 @app.route("/admin/edit_bus/<int:bus_id>", methods=["GET", "POST"])
 def admin_edit_bus(bus_id):
@@ -784,6 +1157,7 @@ def admin_edit_bus(bus_id):
     conn.close()
     return render_template("admin/edit_bus.html", bus=bus)
 
+
 @app.route("/admin/delete_bus/<int:bus_id>")
 def admin_delete_bus(bus_id):
     if session.get("role") != "admin":
@@ -794,6 +1168,7 @@ def admin_delete_bus(bus_id):
     conn.close()
     return redirect(url_for("admin_buses"))
 
+
 @app.route("/admin/drivers")
 def admin_drivers():
     if session.get("role") != "admin":
@@ -802,6 +1177,7 @@ def admin_drivers():
     drivers = conn.execute("SELECT * FROM users WHERE role = 'driver' ORDER BY nom").fetchall()
     conn.close()
     return render_template("admin/drivers.html", drivers=drivers)
+
 
 @app.route("/admin/add_driver", methods=["POST"])
 def admin_add_driver():
@@ -825,6 +1201,7 @@ def admin_add_driver():
         return "Ce chauffeur existe déjà", 400
     conn.close()
     return redirect(url_for("admin_drivers"))
+
 
 @app.route("/admin/edit_driver/<int:driver_id>", methods=["GET", "POST"])
 def admin_edit_driver(driver_id):
@@ -850,6 +1227,7 @@ def admin_edit_driver(driver_id):
     conn.close()
     return render_template("admin/edit_driver.html", driver=driver)
 
+
 @app.route("/admin/delete_driver/<int:driver_id>")
 def admin_delete_driver(driver_id):
     if session.get("role") != "admin":
@@ -859,6 +1237,7 @@ def admin_delete_driver(driver_id):
     conn.commit()
     conn.close()
     return redirect(url_for("admin_drivers"))
+
 
 @app.route("/admin/edit_user/<int:user_id>", methods=["GET", "POST"])
 def admin_edit_user(user_id):
@@ -885,6 +1264,7 @@ def admin_edit_user(user_id):
     conn.close()
     return render_template("admin/edit_user.html", user=user)
 
+
 @app.route("/admin/delete_user/<int:user_id>")
 def admin_delete_user(user_id):
     if session.get("role") != "admin":
@@ -894,6 +1274,7 @@ def admin_delete_user(user_id):
     conn.commit()
     conn.close()
     return redirect(url_for("admin_users"))
+
 
 @app.route("/admin/schedules", methods=["GET", "POST"])
 def admin_schedules():
@@ -912,16 +1293,10 @@ def admin_schedules():
         conn.commit()
     buses = conn.execute("SELECT * FROM buses WHERE statut = 'actif'").fetchall()
     drivers = conn.execute("SELECT * FROM users WHERE role = 'driver'").fetchall()
-    routes = conn.execute("""
-        SELECT r.id, l1.nom AS depart, l2.nom AS destination, r.prix_aller, r.prix_retour
-        FROM routes r
-        LEFT JOIN locations l1 ON r.depart_id = l1.id
-        LEFT JOIN locations l2 ON r.destination_id = l2.id
-        ORDER BY l1.nom, l2.nom
-    """).fetchall()
     schedules = conn.execute("SELECT s.*, b.plaque, u.nom AS driver_name FROM schedules s LEFT JOIN buses b ON s.bus_id = b.id LEFT JOIN users u ON s.driver_id = u.id ORDER BY s.date DESC, s.heure_depart ASC").fetchall()
     conn.close()
     return render_template("admin/schedules.html", buses=buses, drivers=drivers, schedules=schedules)
+
 
 @app.route("/admin/edit_schedule/<int:schedule_id>", methods=["GET", "POST"])
 def admin_edit_schedule(schedule_id):
@@ -954,6 +1329,7 @@ def admin_edit_schedule(schedule_id):
     conn.close()
     return render_template("admin/edit_schedule.html", schedule=schedule, buses=buses, drivers=drivers)
 
+
 @app.route("/admin/delete_schedule/<int:schedule_id>")
 def admin_delete_schedule(schedule_id):
     if session.get("role") != "admin":
@@ -963,6 +1339,7 @@ def admin_delete_schedule(schedule_id):
     conn.commit()
     conn.close()
     return redirect(url_for("admin_schedules"))
+
 
 @app.route("/admin/locations", methods=["GET", "POST"])
 def admin_locations():
@@ -980,6 +1357,7 @@ def admin_locations():
     locations = conn.execute("SELECT * FROM locations ORDER BY nom").fetchall()
     conn.close()
     return render_template("admin/locations.html", locations=locations)
+
 
 @app.route("/admin/edit_location/<int:loc_id>", methods=["GET", "POST"])
 def admin_edit_location(loc_id):
@@ -1000,6 +1378,7 @@ def admin_edit_location(loc_id):
     conn.close()
     return render_template("admin/edit_location.html", location=location)
 
+
 @app.route("/admin/delete_location/<int:loc_id>")
 def admin_delete_location(loc_id):
     if session.get("role") != "admin":
@@ -1009,6 +1388,7 @@ def admin_delete_location(loc_id):
     conn.commit()
     conn.close()
     return redirect(url_for("admin_locations"))
+
 
 @app.route("/admin/news", methods=["GET", "POST"])
 def admin_news():
@@ -1026,6 +1406,7 @@ def admin_news():
     news_items = conn.execute("SELECT n.*, u.nom as admin_name FROM news n LEFT JOIN users u ON n.admin_id = u.id ORDER BY n.date DESC").fetchall()
     conn.close()
     return render_template("admin/news.html", news_items=news_items)
+
 
 @app.route("/admin/edit_news/<int:news_id>", methods=["GET", "POST"])
 def admin_edit_news(news_id):
@@ -1054,6 +1435,7 @@ def admin_edit_news(news_id):
     conn.close()
     return render_template("admin/edit_news.html", news=news_item)
 
+
 @app.route("/admin/delete_news/<int:news_id>")
 def admin_delete_news(news_id):
     if session.get("role") != "admin":
@@ -1067,6 +1449,7 @@ def admin_delete_news(news_id):
     conn.close()
     return redirect(url_for("admin_news"))
 
+
 @app.route("/news/<int:news_id>")
 def news_detail(news_id):
     conn = get_db()
@@ -1079,6 +1462,7 @@ def news_detail(news_id):
         user_liked = bool(liked)
     conn.close()
     return render_template("news_detail.html", news_item=news_item, comments=comments, like_count=like_count, user_liked=user_liked)
+
 
 @app.route("/news/<int:news_id>/comment", methods=["POST"])
 def submit_comment(news_id):
@@ -1094,6 +1478,7 @@ def submit_comment(news_id):
     conn.close()
     return redirect(url_for("news_detail", news_id=news_id))
 
+
 @app.route("/news/<int:news_id>/like", methods=["POST"])
 def toggle_like(news_id):
     if not session.get("user_id"):
@@ -1108,10 +1493,9 @@ def toggle_like(news_id):
     conn.close()
     return redirect(url_for("news_detail", news_id=news_id))
 
-# --- GESTION DES TARIFS (ROUTES) ---
+
 @app.route("/admin/routes", methods=["GET", "POST"])
 def admin_routes():
-
     if session.get("role") != "admin":
         return redirect(url_for("login"))
     
@@ -1137,6 +1521,7 @@ def admin_routes():
     locations = conn.execute("SELECT * FROM locations").fetchall()
     conn.close()
     return render_template("admin/routes.html", routes=routes, locations=locations)
+
 
 @app.route("/admin/edit_route/<int:route_id>", methods=["GET", "POST"])
 def admin_edit_route(route_id):
@@ -1164,6 +1549,7 @@ def admin_edit_route(route_id):
         return redirect(url_for("admin_routes"))
     return render_template("admin/edit_route.html", route=route, locations=locations)
 
+
 @app.route("/admin/delete_route/<int:route_id>")
 def admin_delete_route(route_id):
     if session.get("role") != "admin":
@@ -1174,7 +1560,7 @@ def admin_delete_route(route_id):
     conn.close()
     return redirect(url_for("admin_routes"))
 
-# --- GESTION DES UTILISATEURS ---
+
 @app.route("/admin/users", methods=["GET", "POST"])
 def admin_users():
     if session.get("role") != "admin":
@@ -1204,6 +1590,7 @@ def admin_users():
     conn.close()
     return render_template("admin/users.html", users=users)
 
+
 @app.route("/admin/students", methods=["GET", "POST"])
 def admin_students():
     if session.get("role") != "admin":
@@ -1230,7 +1617,7 @@ def admin_students():
     conn.close()
     return render_template("admin/students.html", students=students)
 
-# --- AFFECTATIONS (PLANIFICATION) ---
+
 @app.route("/admin/assignments", methods=["GET", "POST"])
 def admin_assignments():
     if session.get("role") != "admin":
@@ -1263,23 +1650,11 @@ def admin_assignments():
             if not existing_assignment and route:
                 conn.execute("""
                     INSERT INTO assignments (
-                        bus_id,
-                        driver_id,
-                        route_id,
-                        date,
-                        heure_depart,
-                        heure_arrivee,
-                        statut
+                        bus_id, driver_id, route_id, date, heure_depart, heure_arrivee, statut
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    bus_id,
-                    driver_id,
-                    route_id,
-                    date_trajet,
-                    heure_depart,
-                    heure_arrivee or None,
-                    status,
+                    bus_id, driver_id, route_id, date_trajet, heure_depart, heure_arrivee or None, status
                 ))
 
             existing_schedule = conn.execute("""
@@ -1295,21 +1670,11 @@ def admin_assignments():
             if not existing_schedule and route:
                 conn.execute("""
                     INSERT INTO schedules (
-                        bus_id,
-                        driver_id,
-                        date,
-                        heure_depart,
-                        destination,
-                        disponible
+                        bus_id, driver_id, date, heure_depart, destination, disponible
                     )
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (
-                    bus_id,
-                    driver_id,
-                    date_trajet,
-                    heure_depart,
-                    destination_label,
-                    "oui",
+                    bus_id, driver_id, date_trajet, heure_depart, destination_label, "oui"
                 ))
 
             conn.commit()
@@ -1317,7 +1682,6 @@ def admin_assignments():
         conn.close()
         return redirect(url_for("admin_assignments"))
     
-    # Récupérer les données pour les menus déroulants
     buses = conn.execute("SELECT * FROM buses WHERE statut = 'actif'").fetchall()
     drivers = conn.execute("SELECT * FROM users WHERE role = 'driver'").fetchall()
     routes = conn.execute("""
@@ -1328,22 +1692,12 @@ def admin_assignments():
         ORDER BY l1.nom, l2.nom
     """).fetchall()
     
-    # Liste des affectations avec jointures pour l'affichage
     assignments = conn.execute("""
         SELECT
-            a.id,
-            a.bus_id,
-            a.driver_id,
-            a.route_id,
-            a.date,
-            a.heure_depart,
-            a.heure_arrivee,
+            a.id, a.bus_id, a.driver_id, a.route_id, a.date, a.heure_depart, a.heure_arrivee,
             COALESCE(a.statut, 'planifie') AS statut,
-            b.plaque,
-            b.capacite,
-            u.nom AS chauffeur,
-            l1.nom AS depart,
-            l2.nom AS destination
+            b.plaque, b.capacite, u.nom AS chauffeur,
+            l1.nom AS depart, l2.nom AS destination
         FROM assignments a
         JOIN buses b ON a.bus_id = b.id
         JOIN users u ON a.driver_id = u.id
@@ -1374,4 +1728,8 @@ def admin_assignments():
     )
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=True
+    )

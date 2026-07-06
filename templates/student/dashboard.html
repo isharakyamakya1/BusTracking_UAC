@@ -202,88 +202,92 @@
     </section>
 
     <section id="suivi" class="section-block mt-4 is-visible">
-        <div class="row gy-4">
-            <div class="col-xl-8">
-                <div class="card shadow-sm">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Suivre le bus en temps reel</h5>
+        <div class="student-map-shell">
+            <div class="card shadow-sm student-map-card">
+                <div class="card-header student-map-header">
+                    <div>
+                        <h5 class="mb-1"><i class="bi bi-geo-alt"></i> Suivre le bus en temps réel</h5>
+                        <p class="text-muted mb-0 small"></p>
                     </div>
-                    <div class="card-body">
-                        {% if bus_current %}
-                        {% set current_destination = schedules[0].destination if schedules else None %}
-                        {% set current_station = bus_current.dernier_arret or 'une position en cours de mise a jour' %}
-                        <div class="map-preview mb-3">
-                            <iframe
-                                class="map-frame"
-                                loading="lazy"
-                                referrerpolicy="no-referrer-when-downgrade"
-                                src="https://maps.google.com/maps?q={{ bus_current.current_lat }},{{ bus_current.current_lon }}&z=15&output=embed">
-                            </iframe>
-                            <div class="map-overlay-card">
-                                <div class="map-pin"><i class="bi bi-geo-alt-fill"></i></div>
-                                <div class="map-label">Position actuelle du bus</div>
-                                <div class="map-coords">Latitude: {{ bus_current.current_lat }}, Longitude: {{ bus_current.current_lon }}</div>
-                            </div>
+                </div>
+                <div class="card-body p-0">
+                    {% set map_bus_label = bus_current.plaque if bus_current else 'Bus en attente' %}
+                    {% set map_location_name = current_location_name or (bus_current.dernier_arret if bus_current and bus_current.dernier_arret else 'Position inconnue') %}
+                    {% set map_lat = bus_current.current_lat if bus_current else None %}
+                    {% set map_lon = bus_current.current_lon if bus_current else None %}
+                    {% set current_station = map_location_name %}
+                    <div class="student-map-frame-wrap">
+                        <div id="student-leaflet-map" class="student-map-frame" aria-label="Carte de suivi du bus"></div>
+                        <div id="student-map-empty-state" class="student-map-empty-state" style="display:none;">
+                            <i class="bi bi-geo-alt-slash"></i>
+                            <div>La position du bus n'est pas encore disponible.</div>
                         </div>
-                        <div class="row">
+                    </div>
+                    <div class="student-map-panel mt-3">
+                        <div class="student-map-pill"><i class="bi bi-geo-alt-fill"></i><span>Position actuelle</span></div>
+                        <div id="student-map-overlay-title" class="student-map-overlay-title">Bus {{ map_bus_label }}</div>
+                        <div id="student-map-overlay-location" class="student-map-overlay-location">Lieu : {{ map_location_name }}</div>
+                        <div id="student-map-overlay-meta" class="student-map-overlay-meta">Coordonnées : {% if map_lat is not none and map_lon is not none %}{{ map_lat }} · {{ map_lon }}{% else %}en attente{% endif %}</div>
+                    </div>
+                    <div class="student-map-body">
+                        <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="live-status-card">
                                     <h6 class="mb-2">Bus</h6>
-                                    <p class="mb-0 fw-bold">{{ bus_current.plaque }}</p>
+                                    <p id="student-info-bus" class="mb-0 fw-bold">{{ map_bus_label }}</p>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="live-status-card">
-                                    <h6 class="mb-2">Dernier arret</h6>
-                                    <p class="mb-0">{{ bus_current.dernier_arret or 'Non defini' }}</p>
+                                    <h6 class="mb-2">Dernier arrêt détecté</h6>
+                                    <p id="student-last-stop" class="mb-0 fw-bold">{{ map_location_name }}</p>
                                 </div>
                             </div>
                         </div>
-                        <div class="bus-status-banner mt-3">
-                            {% if current_destination %}
-                            <strong>Statut :</strong> Le bus est en route pour <strong>{{ current_destination }}</strong>.
-                            {% else %}
-                            <strong>Statut :</strong> Le bus est actuellement a <strong>{{ current_station }}</strong>.
-                            {% endif %}
+                        <div id="student-bus-status" class="bus-status-banner mt-3">
+                            <strong>Statut :</strong> Le bus est actuellement à <strong>{{ current_station }}</strong>.
                         </div>
-                        <div class="mt-3 text-muted small">
-                            Les donnees de position sont mises a jour automatiquement des qu'un bus envoie sa position.
-                        </div>
-                        {% else %}
-                        <div class="text-center py-5">
-                            <p class="text-muted">Aucune position de bus disponible actuellement.</p>
+                        {% if schedules and schedules[0].date and schedules[0].heure_depart %}
+                        <div id="student-departure-message" class="bus-departure-banner mt-2" data-departure-date="{{ schedules[0].date }}" data-departure-time="{{ schedules[0].heure_depart }}" data-destination="{{ schedules[0].destination }}">
+                            {{ departure_message or '' }}
                         </div>
                         {% endif %}
+                        <div class="mt-3 text-muted small">
+                            Les données de position sont mises à jour automatiquement dès qu'un bus envoie sa position.
+                        </div>
+                    </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="col-xl-4">
-                <div class="card shadow-sm">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-person-workspace"></i> Infos du chauffeur</h5>
+            <div class="card shadow-sm student-map-info-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person-workspace"></i> Infos du chauffeur</h5>
+                </div>
+                <div class="card-body">
+                    {% if schedules %}
+                    <div class="student-info-grid">
+                        <div class="student-info-item">
+                            <span class="student-info-label">Bus</span>
+                            <strong>{{ schedules[0].plaque }}</strong>
+                        </div>
+                        <div class="student-info-item">
+                            <span class="student-info-label">Chauffeur</span>
+                            <strong>{{ schedules[0].driver_name }}</strong>
+                        </div>
+                        <div class="student-info-item">
+                            <span class="student-info-label">Destination</span>
+                            <strong>{{ schedules[0].destination }}</strong>
+                        </div>
+                        <div class="student-info-item">
+                            <span class="student-info-label">Départ</span>
+                            <strong>{{ schedules[0].date }} à {{ schedules[0].heure_depart }}</strong>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        {% if schedules %}
-                        <p class="text-muted small mb-3">Dernier trajet planifie</p>
-                        <div class="mb-3">
-                            <strong>Bus :</strong> {{ schedules[0].plaque }}
-                        </div>
-                        <div class="mb-3">
-                            <strong>Chauffeur :</strong> {{ schedules[0].driver_name }}
-                        </div>
-                        <div class="mb-3">
-                            <strong>Destination :</strong> {{ schedules[0].destination }}
-                        </div>
-                        <div class="mb-3">
-                            <strong>Depart :</strong> {{ schedules[0].date }} a {{ schedules[0].heure_depart }}
-                        </div>
-                        {% else %}
-                        <div class="text-center py-4">
-                            <p class="text-muted">Aucune information de chauffeur disponible.</p>
-                        </div>
-                        {% endif %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">Aucune information de chauffeur disponible.</p>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -332,53 +336,158 @@
     display: block;
 }
 
-.map-preview {
-    min-height: 300px;
-    border-radius: 18px;
-    background: linear-gradient(180deg, rgba(13, 110, 253, 0.08), rgba(13, 110, 253, 0.02));
-    border: 1px solid rgba(13, 110, 253, 0.12);
-    position: relative;
+.student-map-shell {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 0;
+    gap: 1.25rem;
+}
+
+.student-map-card {
+    border-radius: 24px;
     overflow: hidden;
+    border: 1px solid rgba(13, 110, 253, 0.14);
+    box-shadow: 0 18px 40px rgba(12, 37, 67, 0.09);
 }
 
-.map-pin {
-    font-size: 2.2rem;
+.student-map-header {
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.08), rgba(13, 110, 253, 0.02));
+    border-bottom: 1px solid rgba(13, 110, 253, 0.12);
 }
 
-.map-frame {
+.student-map-frame-wrap {
+    position: relative;
+    padding: 1rem;
+    background: linear-gradient(180deg, rgba(13, 110, 253, 0.08), rgba(13, 110, 253, 0.02));
+}
+
+.student-map-frame {
     width: 100%;
-    min-height: 360px;
+    min-height: 420px;
     border: 0;
     display: block;
-}
-
-.map-overlay-card {
-    position: absolute;
-    left: 1rem;
-    right: 1rem;
-    bottom: 1rem;
-    padding: 1rem 1.1rem;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(10px);
+    border-radius: 20px;
     box-shadow: 0 14px 32px rgba(14, 36, 66, 0.16);
 }
 
-.map-label {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-top: 0.75rem;
+.student-map-overlay,
+.student-map-panel {
+    padding: 1rem 1.1rem;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 16px 36px rgba(14, 36, 66, 0.16);
+    max-width: 100%;
+}
+.student-map-overlay {
+    position: absolute;
+    left: 2rem;
+    right: 2rem;
+    bottom: 2rem;
+    max-width: 320px;
+    z-index: 3;
+}
+.student-map-panel {
+    position: relative;
+    margin: 0 auto;
 }
 
-.map-coords {
-    color: #394150;
-    margin-top: 0.5rem;
+.student-map-empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    text-align: center;
+    color: #516074;
+    background: rgba(248, 250, 252, 0.95);
+    z-index: 2;
+    font-weight: 600;
+    padding: 1.5rem;
+}
+
+.student-map-empty-state i {
+    font-size: 1.8rem;
+    color: #0d6efd;
+}
+
+.student-map-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(13, 110, 253, 0.09);
+    color: #0b5ed7;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.student-map-overlay-title,
+.student-map-panel .student-map-overlay-title {
+    margin-top: 0.75rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1f2d3d;
+}
+
+.student-map-overlay-location,
+.student-map-panel .student-map-overlay-location {
+    margin-top: 0.3rem;
+    color: #0b5ed7;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.student-map-overlay-meta,
+.student-map-panel .student-map-overlay-meta {
+    margin-top: 0.25rem;
+    color: #556073;
+    font-size: 0.95rem;
+}
+
+.bus-departure-banner {
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.08), rgba(13, 110, 253, 0.02));
+    border: 1px solid rgba(13, 110, 253, 0.14);
+    color: #173a63;
+    font-weight: 600;
+}
+
+
+.student-map-body {
+    padding: 1.25rem 1.25rem 1.4rem;
+}
+
+.student-map-info-card {
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(13, 110, 253, 0.12);
+    box-shadow: 0 12px 30px rgba(12, 37, 67, 0.07);
+}
+
+.student-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.student-info-item {
+    padding: 1rem;
+    border-radius: 16px;
+    background: rgba(13, 110, 253, 0.05);
+    border: 1px solid rgba(13, 110, 253, 0.08);
+}
+
+.student-info-label {
+    display: block;
+    color: #6c757d;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.35rem;
 }
 
 .live-status-card {
@@ -589,14 +698,18 @@
         text-align: center;
     }
 
-    .map-frame {
+    .student-map-frame {
         min-height: 280px;
     }
 
-    .map-overlay-card {
+    .student-map-overlay {
         left: 0.75rem;
         right: 0.75rem;
         bottom: 0.75rem;
+    }
+
+    .student-info-grid {
+        grid-template-columns: 1fr;
     }
 
     .news-card-media {
@@ -626,6 +739,14 @@ document.addEventListener("DOMContentLoaded", function () {
         navLinks.forEach((link) => {
             link.classList.toggle("active", link.dataset.target === resolvedSectionId);
         });
+
+        if (resolvedSectionId === "suivi") {
+            window.setTimeout(() => {
+                if (typeof window.__uacStudentMapInvalidate === "function") {
+                    window.__uacStudentMapInvalidate();
+                }
+            }, 180);
+        }
     }
 
     navLinks.forEach((link) => {
@@ -648,6 +769,287 @@ document.addEventListener("DOMContentLoaded", function () {
         showSection(sectionId || "suivi");
     });
 });
+</script>
+<script>
+// Poll server for latest bus locations and update map + status
+(function () {
+    document.addEventListener('DOMContentLoaded', function () {
+        const POLL_INTERVAL_MS = 5000; // Fréquence de rafraîchissement ajustée à 5 secondes pour une meilleure fluidité
+        const mapEl = document.getElementById('student-leaflet-map');
+        const emptyStateEl = document.getElementById('student-map-empty-state');
+        const overlayMeta = document.getElementById('student-map-overlay-meta');
+        const overlayLocation = document.getElementById('student-map-overlay-location');
+        const overlayTitle = document.getElementById('student-map-overlay-title');
+        const lastStopEl = document.getElementById('student-last-stop');
+        const statusEl = document.getElementById('student-bus-status');
+        const infoBusEl = document.getElementById('student-info-bus');
+
+        if (!mapEl) return;
+
+        // Identification de la plaque cible du planning pour sécuriser le filtrage AJAX
+        const targetPlaque = "{% if schedules %}{{ schedules[0].plaque }}{% else %}{{ bus_current.plaque if bus_current else 'Bus en attente' }}{% endif %}";
+
+        const initialState = {{ {
+            'plaque': schedules[0].plaque if schedules else (bus_current.plaque if bus_current else 'Bus en attente'),
+            'lat': bus_current.current_lat if bus_current else None,
+            'lon': bus_current.current_lon if bus_current else None,
+            'locationName': map_location_name,
+            'routeDestination': route_destination_location
+        } | tojson }};
+
+        let map = null;
+        let marker = null;
+        let routeLine = null;
+        let routeDestinationMarker = null;
+
+        window.__uacStudentMapInvalidate = function () {
+            if (map) {
+                map.invalidateSize();
+            }
+        };
+
+        function formatCoordinate(value) {
+            if (typeof value !== 'number' || Number.isNaN(value)) {
+                return 'en attente';
+            }
+            return value.toFixed(6);
+        }
+
+        // Met à jour dynamiquement tous les labels textuels du panneau
+        function updateOverlay(bus, lat, lon, locationName) {
+            const plaque = bus && bus.plaque ? bus.plaque : initialState.plaque;
+            const placeName = locationName || initialState.locationName;
+            const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);
+
+            if (overlayTitle) overlayTitle.textContent = `Bus ${plaque}`;
+            if (overlayLocation) overlayLocation.textContent = `Lieu : ${placeName}`;
+            if (overlayMeta) overlayMeta.textContent = hasCoordinates ? `Coordonnées : ${formatCoordinate(lat)} · ${formatCoordinate(lon)}` : 'Coordonnées : en attente';
+            if (lastStopEl) lastStopEl.textContent = placeName;
+            if (infoBusEl) infoBusEl.textContent = plaque;
+            if (statusEl) {
+                statusEl.innerHTML = `<strong>Statut :</strong> Le bus est actuellement à <strong>${placeName}</strong>.`;
+            }
+        }
+
+        // Calcule le tracé réel sur les routes via l'API OSRM
+        function updateRouteLine(lat, lon) {
+            const destination = initialState.routeDestination;
+            if (!map || !destination || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+                if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+                if (routeDestinationMarker) { map.removeLayer(routeDestinationMarker); routeDestinationMarker = null; }
+                return;
+            }
+
+            const destinationLat = parseFloat(destination.latitude);
+            const destinationLon = parseFloat(destination.longitude);
+            if (!Number.isFinite(destinationLat) || !Number.isFinite(destinationLon)) {
+                return;
+            }
+
+            // Appel à l'API de routage OSRM pour suivre les rues réelles de Butembo
+            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${destinationLon},${destinationLat}?overview=full&geometries=geojson`;
+            
+            fetch(osrmUrl)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.routes && data.routes.length > 0) {
+                        // Inversion [lon, lat] fourni par OSRM en [lat, lon] pour Leaflet
+                        const routeCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                        
+                        if (!routeLine) {
+                            routeLine = L.polyline(routeCoords, {
+                                color: '#ff8c00',
+                                weight: 5,
+                                opacity: 0.9
+                            }).addTo(map);
+                        } else {
+                            routeLine.setLatLngs(routeCoords);
+                        }
+                    } else {
+                        fallbackToStraight(lat, lon, destinationLat, destinationLon);
+                    }
+                })
+                .catch(err => {
+                    console.warn("Erreur de routage OSRM, repli sur ligne droite:", err);
+                    fallbackToStraight(lat, lon, destinationLat, destinationLon);
+                });
+
+            if (!routeDestinationMarker) {
+                routeDestinationMarker = L.circleMarker([destinationLat, destinationLon], {
+                    radius: 8,
+                    color: '#ff8c00',
+                    fillColor: '#ff8c00',
+                    fillOpacity: 0.9,
+                    weight: 3
+                }).addTo(map);
+                routeDestinationMarker.bindPopup(`Itinéraire vers ${destination.name || 'destination'}`);
+            } else {
+                routeDestinationMarker.setLatLng([destinationLat, destinationLon]);
+            }
+        }
+
+        function fallbackToStraight(lat, lon, dLat, dLon) {
+            const path = [[lat, lon], [dLat, dLon]];
+            if (!routeLine) {
+                routeLine = L.polyline(path, {
+                    color: '#ff8c00',
+                    weight: 5,
+                    opacity: 0.9,
+                    dashArray: '10 8'
+                }).addTo(map);
+            } else {
+                routeLine.setLatLngs(path);
+            }
+        }
+
+        function initMap(lat, lon) {
+            if (typeof L === 'undefined') return false;
+            if (map) {
+                map.invalidateSize();
+                return true;
+            }
+
+            map = L.map(mapEl).setView([lat, lon], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            const busIcon = L.divIcon({
+                html: '<span style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;background:#0d6efd;color:white;font-size:16px;box-shadow:0 8px 18px rgba(13,110,253,0.35);border:3px solid white;"><i class="bi bi-bus-front-fill"></i></span>',
+                className: '',
+                iconSize: [38, 38],
+                iconAnchor: [19, 19]
+            });
+
+            marker = L.marker([lat, lon], { icon: busIcon }).addTo(map);
+            marker.bindPopup(`Bus ${initialState.plaque}<br>Lieu: ${initialState.locationName}`);
+            updateRouteLine(lat, lon);
+            setTimeout(function () {
+                if (map) { map.invalidateSize(); }
+            }, 180);
+            return true;
+        }
+
+        function showEmptyState(message) {
+            if (emptyStateEl) {
+                emptyStateEl.style.display = 'flex';
+                emptyStateEl.querySelector('div').textContent = message;
+            }
+        }
+
+        function hideEmptyState() {
+            if (emptyStateEl) {
+                emptyStateEl.style.display = 'none';
+            }
+        }
+
+        // Fonction AJAX de récupération et de mise à jour en temps réel (Polling)
+        async function fetchAndUpdate() {
+            try {
+                const res = await fetch(`/api/buses/locations?ts=${Date.now()}`, { cache: 'no-store' });
+                if (!res.ok) return;
+                const buses = await res.json();
+                
+                if (!Array.isArray(buses) || buses.length === 0) {
+                    updateOverlay(null, initialState.lat, initialState.lon, initialState.locationName);
+                    showEmptyState('La position du bus n\'est pas encore disponible.');
+                    return;
+                }
+
+                // Filtrage automatique sur le bus planifié pour l'étudiant
+                let bus = buses.find(b => b.plaque && b.plaque.trim().toLowerCase() === targetPlaque.trim().toLowerCase());
+                if (!bus) bus = buses[0];
+
+                const lat = parseFloat(bus.current_lat);
+                const lon = parseFloat(bus.current_lon);
+                const plaque = bus.plaque || 'Bus';
+                const locationName = bus.dernier_arret || bus.current_location_name || bus.destination_name || 'Position inconnue';
+
+                // Mise à jour instantanée du panneau textuel au fur et à mesure que le bus bouge
+                updateOverlay(bus, lat, lon, locationName);
+
+                if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
+                    if (!initMap(lat, lon)) return;
+                    marker.setLatLng([lat, lon]);
+                    map.panTo([lat, lon]);
+                    marker.setPopupContent(`Bus ${plaque}<br>Lieu: ${locationName}`);
+                    updateRouteLine(lat, lon);
+                    hideEmptyState();
+                } else {
+                    showEmptyState('La position du bus n\'est pas encore disponible.');
+                }
+            } catch (err) {
+                console.warn('Erreur lors de la récupération des positions :', err);
+            }
+        }
+
+        if (Number.isFinite(initialState.lat) && Number.isFinite(initialState.lon) && initialState.lat !== 0 && initialState.lon !== 0) {
+            initMap(initialState.lat, initialState.lon);
+            updateOverlay(null, initialState.lat, initialState.lon, initialState.locationName);
+            updateRouteLine(initialState.lat, initialState.lon);
+        } else {
+            updateOverlay(null, NaN, NaN, initialState.locationName);
+            showEmptyState('La position du bus n\'est pas encore disponible.');
+        }
+
+        fetchAndUpdate();
+        setInterval(fetchAndUpdate, POLL_INTERVAL_MS);
+
+        // GESTION DU COMPTE À REBOURS ET DE L'APRÈS-DÉPART
+        const departureBanner = document.getElementById('student-departure-message');
+        
+        function updateDepartureCountdown() {
+            if (!departureBanner) return;
+            const departDate = departureBanner.dataset.departureDate;
+            const departTime = departureBanner.dataset.departureTime;
+            const destination = departureBanner.dataset.destination || "sa destination";
+            
+            if (!departDate || !departTime) return;
+
+            const departure = new Date(`${departDate}T${departTime}:00`);
+            if (Number.isNaN(departure.getTime())) return;
+
+            const now = new Date();
+            const diffMs = departure - now;
+            const diffMinutes = Math.floor(diffMs / 60000);
+
+            // CAS 1 : L'heure exacte est arrivée ou dépassée -> Le bus est parti !
+            if (diffMs < 0) {
+                departureBanner.style.display = 'block';
+                departureBanner.className = "alert alert-danger mt-2 fw-bold"; // Passage au rouge
+                departureBanner.style.backgroundColor = '#f8d7da';
+                departureBanner.style.color = '#721c24';
+                departureBanner.style.borderColor = '#f5c6cb';
+                departureBanner.innerHTML = `<i class="bi bi-exclamation-octagon-fill"></i> <strong>Statut :</strong> Le bus est déjà parti pour <strong>${destination}</strong>.`;
+                return;
+            }
+
+            // CAS 2 : Le départ est dans plus de 60 minutes
+            if (diffMs > 3600000) {
+                departureBanner.style.display = 'none';
+                return;
+            }
+
+            // CAS 3 : Compte à rebours actif entre 0 et 60 minutes
+            departureBanner.style.display = 'block';
+            departureBanner.className = "bus-departure-banner mt-2"; // Style jaune/orange standard
+            departureBanner.style.backgroundColor = '';
+            departureBanner.style.color = '';
+            departureBanner.style.borderColor = '';
+            
+            if (diffMinutes <= 0) {
+                departureBanner.innerHTML = `<i class="bi bi-clock-history"></i> Le bus décolle dans moins d'une minute.`;
+            } else if (diffMinutes === 1) {
+                departureBanner.innerHTML = `<i class="bi bi-clock-history"></i> Le bus décolle dans 1 minute.`;
+            } else {
+                departureBanner.innerHTML = `<i class="bi bi-clock-history"></i> Le bus décolle dans <strong>${diffMinutes}</strong> minutes.`;
+            }
+        }
+
+        updateDepartureCountdown();
+        setInterval(updateDepartureCountdown, 10000); // Vérification de l'horloge toutes les 10 secondes
+    });})();
 </script>
 {% endblock %}
 

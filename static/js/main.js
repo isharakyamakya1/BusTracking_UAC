@@ -91,28 +91,82 @@ function setupBusMap() {
         maxZoom: 18,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
+    // State for buses: { [busId]: { marker, polyline, positions: [[lat,lon], ...] } }
+    const busesState = {};
+    // whether the user has interacted with the map (stop auto-fitting)
+    let userInteracted = false;
 
-    let marker = null;
+    map.on('dragstart zoomstart', () => { userInteracted = true; });
+
+    function formatLabel(bus) {
+        const plaque = bus.plaque || '—';
+        const dest = bus.destination_name ? `\u00A0–\u00A0${bus.destination_name}` : '';
+        const driver = bus.driver && bus.driver.nom ? `<br/><small>Chauffeur: ${bus.driver.nom}</small>` : '';
+        return `<strong>${plaque}</strong>${dest}${driver}`;
+    }
+
+    const redBusIcon = L.divIcon({
+        html: '<span style="display:block;width:14px;height:14px;border-radius:50%;background:#e74c3c;border:2px solid #ffffff;box-shadow:0 0 0 2px rgba(231, 76, 60, 0.2);"></span>',
+        className: '',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+    });
 
     async function refreshBusLocations() {
         try {
             const response = await fetch("/api/buses/locations");
             if (!response.ok) return;
             const locations = await response.json();
-            if (!Array.isArray(locations) || !locations.length) return;
+            if (!Array.isArray(locations)) return;
 
-            const latest = locations[0];
-            const lat = parseFloat(latest.current_lat);
-            const lon = parseFloat(latest.current_lon);
-            if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+            const bounds = [];
 
-            if (!marker) {
-                marker = L.marker([lat, lon]).addTo(map);
-            } else {
-                marker.setLatLng([lat, lon]);
+            locations.forEach((bus) => {
+                const id = bus.id;
+                const lat = parseFloat(bus.current_lat);
+                const lon = parseFloat(bus.current_lon);
+                if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+
+                bounds.push([lat, lon]);
+
+                if (!busesState[id]) {
+                    // create marker and polyline
+                    const marker = L.marker([lat, lon], { icon: redBusIcon }).addTo(map);
+                    const polyline = L.polyline([[lat, lon]], { color: '#3388ff', weight: 4 }).addTo(map);
+                    marker.bindPopup(formatLabel(bus));
+                    busesState[id] = { marker, polyline, positions: [[lat, lon]] };
+                } else {
+                    const state = busesState[id];
+                    // update marker position
+                    state.marker.setLatLng([lat, lon]);
+                    // update popup content
+                    state.marker.getPopup().setContent(formatLabel(bus));
+                    // append to positions and update polyline
+                    const last = state.positions[state.positions.length - 1];
+                    if (!last || last[0] !== lat || last[1] !== lon) {
+                        state.positions.push([lat, lon]);
+                        if (state.positions.length > 200) state.positions.shift();
+                        state.polyline.setLatLngs(state.positions);
+                    }
+                }
+            });
+
+            // Optionally remove buses not returned anymore
+            Object.keys(busesState).forEach((key) => {
+                const found = locations.find(b => String(b.id) === String(key));
+                if (!found) {
+                    const s = busesState[key];
+                    map.removeLayer(s.marker);
+                    map.removeLayer(s.polyline);
+                    delete busesState[key];
+                }
+            });
+
+            // Auto-fit bounds on first load or if user hasn't interacted
+            if (bounds.length && !userInteracted) {
+                const leafletBounds = L.latLngBounds(bounds);
+                map.fitBounds(leafletBounds.pad(0.2));
             }
-            marker.bindPopup(`<strong>${latest.plaque}</strong><br>${latest.dernier_arret || 'Position actuelle'}`).openPopup();
-            map.setView([lat, lon], 13);
         } catch (error) {
             console.warn("Impossible de charger les positions des bus", error);
         }
@@ -120,6 +174,39 @@ function setupBusMap() {
 
     refreshBusLocations();
     window.setInterval(refreshBusLocations, 15000);
+}
+
+function setupDriverMap() {
+    const mapEl = document.getElementById('driver-leaflet-map');
+    if (!mapEl || typeof L === 'undefined') return;
+
+    const lat = parseFloat(mapEl.dataset.lat);
+    const lon = parseFloat(mapEl.dataset.lon);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+
+    const plaque = mapEl.dataset.plaque || 'Bus';
+    const stop = mapEl.dataset.stop || 'Dernier arrêt inconnu';
+
+    const map = L.map(mapEl, { zoomControl: true }).setView([lat, lon], 15);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const busIcon = L.divIcon({
+        html: '<span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#0d6efd;color:white;font-size:18px;box-shadow:0 0 0 12px rgba(13,110,253,0.16);border:2px solid white;"><i class="bi bi-bus-front-fill"></i></span>',
+        className: '',
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
+    });
+
+    const marker = L.marker([lat, lon], { icon: busIcon }).addTo(map);
+    marker.bindPopup(`<strong>${plaque}</strong><br>${stop}`);
+    setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 200);
 }
 
 function updateSidebarActiveLink() {
@@ -164,6 +251,7 @@ function init() {
     setupPasswordToggles();
     setupFormValidation();
     setupBusMap();
+    setupDriverMap();
     updateSidebarActiveLink();
     setupSidebarLinks();
 
